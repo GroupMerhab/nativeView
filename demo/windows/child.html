@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>NativeView Child</title>
+    <style>
+        body { background: #1e1e1e; color: #d4d4d4; font-family: sans-serif; margin: 0; padding: 15px; font-size: 13px; }
+        h1 { font-size: 1.4em; color: #fff; border-bottom: 1px solid #333; padding-bottom: 5px; margin: 0 0 10px 0; }
+        .section { background: #252526; border: 1px solid #333; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+        h2 { margin: 0 0 5px 0; font-size: 1.1em; color: #9cdcfe; }
+        .row { margin-bottom: 5px; display: flex; align-items: center; }
+        label { min-width: 80px; color: #aaa; }
+        input, textarea { background: #3c3c3c; border: 1px solid #555; color: #ccc; padding: 4px; border-radius: 2px; font-family: monospace; width: 100%; box-sizing: border-box; }
+        textarea { height: 40px; resize: vertical; }
+        button { background: #0e639c; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 2px; }
+        button:hover { background: #1177bb; }
+        button.danger { background: #ce9178; color: #1e1e1e; font-weight: bold; }
+        #msg-log { background: #111; border: 1px solid #333; padding: 5px; height: 120px; overflow-y: auto; font-family: monospace; font-size: 11px; white-space: pre-wrap; }
+        .log-entry { border-bottom: 1px solid #222; padding-bottom: 2px; margin-bottom: 2px; }
+        .log-meta { color: #569cd6; } .log-data { color: #ce9178; } .status-val { font-weight: bold; color: #4ec9b0; }
+    </style>
+</head>
+<body>
+    <h1>NativeView Child Window</h1>
+    <div class="section">
+        <h2>Identity</h2>
+        <div class="row"><label>Window ID:</label><span id="self-id" class="status-val">Waiting...</span></div>
+        <div class="row"><label>Last from:</label><span id="last-from" class="status-val">-</span></div>
+    </div>
+    <div class="section">
+        <h2>Receive Messages</h2>
+        <div id="msg-log"></div>
+    </div>
+    <div class="section">
+        <h2>Send to Main</h2>
+        <div class="row"><label>Event:</label><input id="send-event" type="text" value="child-event"></div>
+        <div class="row"><label>Data:</label><textarea id="send-data">{"hello":"from child"}</textarea></div>
+        <div class="row"><button onclick="sendToMain()">Send to Main</button></div>
+    </div>
+    <div class="section">
+        <h2>Broadcast</h2>
+        <div class="row"><label>Event:</label><input id="bcast-event" type="text" value="broadcast-event"></div>
+        <div class="row"><label>Data:</label><textarea id="bcast-data">{"msg":"hello world"}</textarea></div>
+        <div class="row"><button onclick="broadcast()">Broadcast to All</button></div>
+    </div>
+    <div class="section">
+        <h2>Close Self</h2>
+        <button class="danger" onclick="closeSelf()">Close This Window</button>
+    </div>
+
+    <script src="../../dist/nativeview.js"></script>
+    <script>
+        function el(id) { return document.getElementById(id); }
+        function logMsg(from, event, data) {
+            var log = el('msg-log');
+            var div = document.createElement('div');
+            div.className = 'log-entry';
+            var meta = '[' + new Date().toLocaleTimeString() + '] from:' + from + ' event:' + event + ' ';
+            div.innerHTML = '<span class="log-meta">' + meta + '</span><span class="log-data">data:' + JSON.stringify(data) + '</span>';
+            if (log.firstChild) log.insertBefore(div, log.firstChild);
+            else log.appendChild(div);
+            while (log.children.length > 20) log.removeChild(log.lastChild);
+            el('last-from').textContent = from;
+        }
+
+        window.onload = function() {
+            var checkId = setInterval(function() {
+                if (typeof NativeView === 'undefined' || !NativeView.windows || !NativeView.windows.selfId()) return;
+                var id = NativeView.windows.selfId();
+                el('self-id').textContent = id;
+                clearInterval(checkId);
+                NativeView.windows.setTitle(id, "Child: " + id);
+            }, 100);
+
+            if (typeof NativeView !== 'undefined' && NativeView.ipc) {
+                NativeView.ipc.on("ping", function(data, from) {
+                    logMsg(from, "ping", data);
+                    NativeView.ipc.send(from, "pong", { ts: Date.now(), replyTo: data });
+                });
+                NativeView.ipc.on("update-title", function(data, from) {
+                    logMsg(from, "update-title", data);
+                    if (data && data.title) NativeView.windows.setTitle(NativeView.windows.selfId(), data.title);
+                });
+                NativeView.ipc.on("close", function(data, from) {
+                    logMsg(from, "close", data);
+                    closeSelf();
+                });
+                NativeView.ipc.on("message", function(data, from) {
+                    logMsg(from, "message", data);
+                });
+            }
+        };
+
+        function sendToMain() {
+            try { NativeView.ipc.send("main", el('send-event').value, JSON.parse(el('send-data').value)); }
+            catch (e) { alert("Invalid JSON"); }
+        }
+        function broadcast() {
+            try { NativeView.ipc.broadcast(el('bcast-event').value, JSON.parse(el('bcast-data').value)); }
+            catch (e) { alert("Invalid JSON"); }
+        }
+        function closeSelf() {
+            var id = NativeView.windows.selfId();
+            if (id) NativeView.windows.close(id);
+            else alert("ID not ready");
+        }
+    </script>
+</body>
+</html>

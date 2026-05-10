@@ -1,0 +1,5 @@
+Hello NativeView!
+This is a test file.
+Used by the filesystem demo tab.
+Created by the NativeView demo app.
+End of file.

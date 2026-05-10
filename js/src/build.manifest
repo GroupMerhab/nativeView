@@ -1,0 +1,39 @@
+# NativeView.js build manifest 
+# Format: path relative to js/src/ 
+# Lines starting with # are comments 
+
+# ── Level 0: No dependencies 
+core/constants.js 
+core/state.js 
+
+# ── Level 1: Depend on constants only 
+core/error.js 
+core/log.js 
+
+# ── Level 2: Core transport 
+core/ipc.js 
+core/router.js 
+
+# ── Level 3: Abstractions 
+core/request.js 
+core/events.js 
+core/init.js 
+
+# ── Level 4: Modules (order independent) 
+modules/window.js 
+modules/app.js 
+modules/fs.js 
+modules/dialog.js 
+modules/clipboard.js 
+modules/shell.js 
+modules/screen.js 
+modules/notification.js 
+modules/tray.js 
+modules/windows.js
+modules/ipc_bus.js
+
+# ── Level 5: Debug (before api.js so _debug is in scope) 
+debug/debug.js 
+
+# ── Level 6: Assembly — always last 
+public/api.js

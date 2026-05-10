@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Settings</title>
+    <style>
+        body {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            margin: 0;
+            padding: 20px;
+            font-size: 13px;
+            user-select: none;
+        }
+        h1 {
+            font-size: 1.4em;
+            color: #fff;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin: 0 0 15px 0;
+        }
+        .section {
+            background: #252526;
+            border: 1px solid #333;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .section h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.1em;
+            color: #9cdcfe;
+        }
+        .row {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .row:last-child { margin-bottom: 0; }
+        label { color: #ccc; }
+        
+        select {
+            background: #3c3c3c;
+            border: 1px solid #555;
+            color: #ccc;
+            padding: 4px;
+            border-radius: 2px;
+            outline: none;
+        }
+        
+        /* Radio buttons */
+        .radio-group { display: flex; gap: 10px; }
+        .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3c3c3c;
+            transition: .4s;
+            border-radius: 20px;
+            border: 1px solid #555;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 2px;
+            bottom: 2px;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #0e639c; border-color: #0e639c; }
+        input:checked + .slider:before { transform: translateX(16px); background-color: #fff; }
+
+        /* About info */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-family: monospace;
+            color: #aaa;
+        }
+        .info-val { color: #ce9178; }
+
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+        }
+        button {
+            background: #3c3c3c;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 6px 14px;
+            cursor: pointer;
+            border-radius: 2px;
+            font-size: 13px;
+        }
+        button:hover { background: #444; }
+        button.primary {
+            background: #0e639c;
+            color: white;
+            border: none;
+        }
+        button.primary:hover { background: #1177bb; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Settings</h1>
+
+    <div class="section">
+        <h2>Appearance</h2>
+        <div class="row">
+            <label>Theme</label>
+            <div class="radio-group">
+                <label><input type="radio" name="theme" value="dark" checked onchange="updateTheme(this.value)"> Dark</label>
+                <label><input type="radio" name="theme" value="light" onchange="updateTheme(this.value)"> Light</label>
+            </div>
+        </div>
+        <div class="row">
+            <label>Font Size</label>
+            <select id="fontSize" onchange="updateFontSize(this.value)">
+                <option value="12">12px</option>
+                <option value="14" selected>14px</option>
+                <option value="16">16px</option>
+                <option value="18">18px</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Notifications</h2>
+        <div class="row">
+            <label>Enable Notifications</label>
+            <label class="switch">
+                <input type="checkbox" id="notifToggle" checked onchange="updateNotif(this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>About</h2>
+        <div class="info-row"><span>JS Version:</span> <span id="ver-js" class="info-val">-</span></div>
+        <div class="info-row"><span>C Version:</span> <span id="ver-c" class="info-val">-</span></div>
+        <div class="info-row"><span>Platform:</span> <span id="platform" class="info-val">-</span></div>
+    </div>
+
+    <div class="footer">
+        <button onclick="closeSelf()">Close</button>
+        <button class="primary" onclick="applyAndClose()">Apply & Close</button>
+    </div>
+
+    <script src="../../dist/nativeview.js"></script>
+    <script>
+        function el(id) { return document.getElementById(id); }
+
+        // State to send on "Apply & Close"
+        var currentSettings = {
+            theme: 'dark',
+            fontSize: '14',
+            notifications: true
+        };
+
+        function sendChange(key, value) {
+            currentSettings[key] = value;
+            if (typeof NativeView !== 'undefined' && NativeView.ipc) {
+                NativeView.ipc.send("main", "settings-changed", { key: key, value: value });
+            }
+        }
+
+        function updateTheme(val) { sendChange('theme', val); }
+        function updateFontSize(val) { sendChange('fontSize', val); }
+        function updateNotif(val) { sendChange('notifications', val); }
+
+        function closeSelf() {
+            if (typeof NativeView !== 'undefined' && NativeView.windows) {
+                var id = NativeView.windows.selfId();
+                if (id) NativeView.windows.close(id);
+            }
+        }
+
+        function applyAndClose() {
+            // Re-send all just to be sure (simulated "Apply")
+            sendChange('theme', currentSettings.theme);
+            sendChange('fontSize', currentSettings.fontSize);
+            sendChange('notifications', currentSettings.notifications);
+            setTimeout(closeSelf, 100);
+        }
+
+        window.onload = function() {
+            // Poll for ready
+            var check = setInterval(function() {
+                if (typeof NativeView === 'undefined' || !NativeView.app) return;
+                clearInterval(check);
+
+                // Populate About
+                el('ver-js').textContent = NativeView.version || '-';
+                
+                NativeView.app.getVersion().then(function(res) {
+                    el('ver-c').textContent = res.version;
+                }).catch(function(err) {
+                    el('ver-c').textContent = 'Error';
+                });
+
+                NativeView.app.getPlatform().then(function(res) {
+                    el('platform').textContent = res.platform;
+                }).catch(function(err) {
+                    el('platform').textContent = 'Error';
+                });
+
+                // Set title with ID once available
+                var idCheck = setInterval(function() {
+                    if (NativeView.windows && NativeView.windows.selfId()) {
+                        clearInterval(idCheck);
+                        NativeView.windows.setTitle(NativeView.windows.selfId(), "Settings");
+                    }
+                }, 100);
+
+            }, 100);
+        };
+    </script>
+</body>
+</html>

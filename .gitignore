@@ -1,0 +1,69 @@
+# --- macOS ---
+.DS_Store
+
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+
+# --- Editors / IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Temporary ---
+*.tmp
+*.bak
+*.log
+
+# --- C/C++ build ---
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.exe
+*.out
+*.dSYM
+
+# --- CMake ---
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+Testing/
+DartConfiguration.tcl
+compile_commands.json
+install_manifest.txt
+
+# --- Build dirs ---
+build/
+build_fresh/
+build_test/
+out/
+lib/
+bin/
+
+# --- JS build ---
+js/dist/
+dist/
+
+# --- Coverage ---
+coverage/
+*.lcov
+*.gcda
+*.gcno
+
+# --- Demo assets (optional: uncomment if generated) ---
+# demo/assets/*.png
+# demo/assets/test_file.txt

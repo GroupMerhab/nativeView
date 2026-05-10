@@ -1,0 +1,10 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: nativeview
+Description: Cross-platform C library for embedding native WebViews
+Version: 0.1.0
+Libs: -L${libdir} -lnativeview
+Cflags: -I${includedir}

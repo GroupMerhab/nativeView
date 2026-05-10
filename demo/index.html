@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NativeView Mega Demo</title>
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+  <header>
+    <h1>NativeView Mega Demo</h1>
+  </header>
+
+  <nav aria-label="Demo Modules">
+    <button type="button" class="tab-btn" id="tab-window-btn" data-tab="window">Window</button>
+    <button type="button" class="tab-btn" id="tab-app-btn" data-tab="app">App</button>
+    <button type="button" class="tab-btn" id="tab-fs-btn" data-tab="fs">Filesystem</button>
+    <button type="button" class="tab-btn" id="tab-dialog-btn" data-tab="dialog">Dialog</button>
+    <button type="button" class="tab-btn" id="tab-clipboard-btn" data-tab="clipboard">Clipboard</button>
+    <button type="button" class="tab-btn" id="tab-shell-btn" data-tab="shell">Shell</button>
+    <button type="button" class="tab-btn" id="tab-screen-btn" data-tab="screen">Screen</button>
+    <button type="button" class="tab-btn" id="tab-notification-btn" data-tab="notification">Notification</button>
+    <button type="button" class="tab-btn" id="tab-tray-btn" data-tab="tray">Tray</button>
+    <button type="button" class="tab-btn" id="tab-multiwindow-btn" data-tab="multiwindow">Multi-Window</button>
+    <button type="button" class="tab-btn" id="tab-ipc-btn" data-tab="ipc">IPC Bench</button>
+  </nav>
+
+  <main>
+    <section id="tab-window" aria-labelledby="tab-window-btn" data-panel="window"></section>
+    <section id="tab-app" aria-labelledby="tab-app-btn" data-panel="app"></section>
+    <section id="tab-fs" aria-labelledby="tab-fs-btn" data-panel="fs"></section>
+    <section id="tab-dialog" aria-labelledby="tab-dialog-btn" data-panel="dialog"></section>
+    <section id="tab-clipboard" aria-labelledby="tab-clipboard-btn" data-panel="clipboard"></section>
+    <section id="tab-shell" aria-labelledby="tab-shell-btn" data-panel="shell"></section>
+    <section id="tab-screen" aria-labelledby="tab-screen-btn" data-panel="screen"></section>
+    <section id="tab-notification" aria-labelledby="tab-notification-btn" data-panel="notification"></section>
+    <section id="tab-tray" aria-labelledby="tab-tray-btn" data-panel="tray"></section>
+    <section id="tab-multiwindow" aria-labelledby="tab-multiwindow-btn" data-panel="multiwindow"></section>
+    <section id="tab-ipc" aria-labelledby="tab-ipc-btn" data-panel="ipc"></section>
+  </main>
+
+  <footer>
+    <div id="statusbar" class="statusbar" aria-live="polite">
+      <span>Connected: <strong id="sb-connected">NO</strong></span>
+      <span>| Platform: <strong id="sb-platform">unknown</strong></span>
+      <span>| C Version: <strong id="sb-cversion">n/a</strong></span>
+      <span>| Total PASS: <strong id="sb-pass">0</strong></span>
+      <span>| Total FAIL: <strong id="sb-fail">0</strong></span>
+    </div>
+  </footer>
+
+  <script src="../dist/nativeview.js"></script>
+  <script src="js/demo_core.js"></script>
+  <script src="js/demo_window.js"></script>
+  <script src="js/demo_app.js"></script>
+  <script src="js/demo_fs.js"></script>
+  <script src="js/demo_dialog.js"></script>
+  <script src="js/demo_clipboard.js"></script>
+  <script src="js/demo_shell.js"></script>
+  <script src="js/demo_screen.js"></script>
+  <script src="js/demo_notification.js"></script>
+  <script src="js/demo_tray.js"></script>
+  <script src="js/demo_multiwindow.js"></script>
+  <script src="js/demo_ipc.js"></script>
+</body>
+<!-- File generated to meet demo shell requirements; scripts populate sections and wire tabs. -->
+</html>
