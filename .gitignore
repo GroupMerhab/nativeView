@@ -50,9 +50,21 @@ install_manifest.txt
 build/
 build_fresh/
 build_test/
+# CMake / local out-of-tree dirs (not matched by `build/` alone)
+build-*/
+cmake-build-*/
 out/
 lib/
 bin/
+
+# --- Android / Gradle ---
+.gradle/
+local.properties
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
 
 # --- JS build ---
 js/dist/
