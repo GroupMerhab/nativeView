@@ -4,7 +4,7 @@ A cross-platform C library for embedding native WebViews in applications.
 
 ## Features
 
-- **Cross-Platform**: Works on macOS (WKWebView), Windows (WebView2), and Linux (WebKitGTK).
+- **Cross-Platform**: Works on macOS and iOS (WKWebView), Windows (WebView2), Linux (WebKitGTK), and Android (System WebView).
 - **Multi-Window Support**: Create and manage multiple windows with a global registry and ID-based routing.
 - **Bidirectional IPC**: Efficient JSON-based messaging between native and web layers.
 - **IPC Bus**: Built-in message bus for window-to-window and broadcast communication.
@@ -16,9 +16,11 @@ A cross-platform C library for embedding native WebViews in applications.
 
 | Platform | Backend | Status |
 |----------|---------|--------|
-| macOS | WKWebView | **Active Development** |
-| Windows | WebView2 | Planned |
-| Linux | WebKitGTK | Planned |
+| macOS | WKWebView | **Supported** |
+| Windows | WebView2 | **Supported** |
+| Linux | WebKitGTK | **Supported** |
+| Android | System WebView | **Supported** |
+| iOS | WKWebView | **Supported** |
 
 ## Building
 
