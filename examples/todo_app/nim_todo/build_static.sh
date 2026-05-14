@@ -7,7 +7,8 @@
 #   NV_CMAKE_BUILD_DIR        — CMake binary dir (default: repo build-nim-todo-static)
 #   NIM, NV_JOBS, CMAKE_BUILD_TYPE — same spirit as examples/nim/build_static.sh
 #
-# macOS: static link may crash at launch; prefer shared nativeview (see examples/nim/README.md).
+# Size: Nim uses -d:release --opt:size and -Wl,--gc-sections (Linux) / -Wl,-dead_strip (Darwin)
+# on the final link so unused object code from static nativeview .a files can be dropped.
 set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)"
@@ -64,7 +65,10 @@ Linux)
     fi
   done
   GROUP="-Wl,--start-group $NV_RUNTIME $NV_PLAT $NV_OPS $NV_IPC $NV_CORE -Wl,--end-group"
-  "$NIM" c -d:release --path:"$REPO_ROOT/bindings/nim" \
+  # --opt:size: smaller codegen than release default (--opt:speed).
+  # --passL gc-sections: Nim drives the final link; drop unused .o from static .a (archives are built with -ffunction-sections).
+  "$NIM" c -d:release --opt:size --path:"$REPO_ROOT/bindings/nim" \
+    --passL:-Wl,--gc-sections \
     --passL:"$GROUP" \
     --passL:"$PKG_LIBS" \
     --passL:"$SQLITE_LIBS" \
@@ -79,7 +83,8 @@ Darwin)
   NV_OPS="$BUILD_DIR/modules/nv-ops/libnv-ops.a"
   NV_IPC="$BUILD_DIR/modules/nv-ipc/libnv-ipc.a"
   NV_CORE="$BUILD_DIR/modules/nv-core/libnv-core.a"
-  "$NIM" c -d:release --path:"$REPO_ROOT/bindings/nim" \
+  "$NIM" c -d:release --opt:size --path:"$REPO_ROOT/bindings/nim" \
+    --passL:-Wl,-dead_strip \
     --passL:"$NV_PLAT" \
     --passL:"$NV_RUNTIME" \
     --passL:"$NV_OPS" \
@@ -90,7 +95,6 @@ Darwin)
     -o:"$SCRIPT_DIR/nim_todo" \
     "$SCRIPT_DIR/todo_app.nim"
   echo "Built: $SCRIPT_DIR/nim_todo"
-  echo "On macOS, if the window crashes at launch, use shared nativeview (see examples/nim/README.md)."
   ;;
 *)
   echo "Unsupported host for this script: $(uname -s). Adapt passL from docs/Nim.md."

@@ -3,6 +3,7 @@ build-nim-todo-static/
 build-python-todo-shared/
 build-zig-todo-static/
 build-rust-todo-static/
+build-java-todo-shared/
 c_todo/build/
 nim_todo/nim_todo
 rust_todo/target/
@@ -13,3 +14,5 @@ zig_todo/test_todo_bridge
 ui/node_modules/
 ui/dist/
 *.db
+*.db-shm
+*.db-wal

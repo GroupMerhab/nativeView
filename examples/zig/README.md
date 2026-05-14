@@ -1,6 +1,6 @@
 # Zig minimal sample
 
-**macOS:** static linking often succeeds at link time but can **crash before the window appears** (AppKit / event-loop ownership), the same caveat as `examples/nim/README.md`. For macOS GUI work, prefer **`nativeview_shared`** (`libnativeview.dylib`) and link that from Zig instead of the static `.a` chain.
+**macOS:** `build_static.sh` links the static `.a` chain in the same order as the C examples; **`minimal.zig`** runs with that layout. **Optional:** build **`nativeview_shared`** and link **`libnativeview.dylib`** if you prefer a shared library (see **`docs/Zig.md`**).
 
 ## Build (Linux / macOS)
 

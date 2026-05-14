@@ -27,7 +27,7 @@ Output binary: `./zig_todo`. Optional DB path: first CLI argument (default `./to
 
 ## macOS
 
-Static linking may crash before the window appears; use shared `libnativeview` as in [docs/Zig.md](../../../docs/Zig.md).
+`build_static.sh` static-links nativeview the same way as the C todo example (archives + frameworks). For an optional **`libnativeview.dylib`** workflow, see [docs/Zig.md](../../../docs/Zig.md).
 
 ## Zig version
 

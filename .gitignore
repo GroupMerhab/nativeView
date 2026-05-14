@@ -122,6 +122,10 @@ nimcache/
 # --- Rust (Cargo) ---
 bindings/rust/target/
 
+# --- Java (Maven: JNI bindings; bytecode should never be committed) ---
+*.class
+bindings/java/target/
+
 # --- Android / Gradle ---
 **/.gradle/
 local.properties
@@ -141,6 +145,11 @@ local.properties
 
 examples/ios_runner/_xcode/
 examples/android_runner/_cmake_smoke/
+
+# SQLite when a todo/demo is run with CWD at repo root (WAL creates -shm / -wal)
+/todo_app.db
+/todo_app.db-shm
+/todo_app.db-wal
 
 # --- JS build ---
 js/dist/

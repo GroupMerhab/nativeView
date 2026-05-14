@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "nv_core_internal.h"
 #include "nv_window_internal.h"
@@ -1649,6 +1650,8 @@ static void nv_mac_platform_app_set_menu(nv_window_t* w, const nv_menu_item_t* i
  * App Platform Hooks
  * =============================================================================
  */
+
+NV_API int nv_is_process_main_thread(void) { return pthread_main_np() != 0; }
 
 NV_INTERNAL void nv_app_platform_init(nv_app_t *app) {
   if (!app) return;

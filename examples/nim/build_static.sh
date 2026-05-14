@@ -2,10 +2,8 @@
 # Static-link nativeview archives into the Nim minimal sample (no -d:nativeviewShared).
 # Run from examples/nim.
 #
-# macOS note: linking succeeds, but a normal Nim main can still hit AppKit
-# EXC_BAD_INSTRUCTION before the window appears (same class of issue as FPC).
-# Use -d:nativeviewShared + libnativeview.dylib for macOS GUI (see README.md).
-# This script still builds archives and links so you can experiment.
+# macOS: static archives + frameworks match the C examples; minimal.nim is expected to run.
+# Optional: -d:nativeviewShared + libnativeview.dylib (see README.md / docs/Nim.md).
 set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
@@ -59,7 +57,6 @@ Darwin)
     --passL:"-framework Carbon -framework Cocoa -framework CoreServices -framework WebKit -framework UserNotifications -lobjc" \
     minimal.nim
   echo "Built: $SCRIPT_DIR/minimal (static nativeview, no -d:nativeviewShared)"
-  echo "On macOS, if the window crashes at launch, use shared + -d:nativeviewShared (see README.md)."
   ;;
 *)
   echo "Unsupported host for this script: $(uname -s). See docs/Nim.md for manual --passL."

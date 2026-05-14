@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <string.h>
 
+NV_API int nv_is_process_main_thread(void) { return 1; }
+
 #define NV_ANDROID_LOG_TAG "nativeview"
 
 typedef struct {

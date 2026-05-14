@@ -1,6 +1,6 @@
 # Zig — nativeview
 
-**On macOS, static linking tends to crash before the window appears (AppKit event-loop ownership). Use the shared `libnativeview.dylib` path for macOS GUI apps.** This matches the warning in `examples/pascal/build_static_example.sh` and `examples/nim/build_static.sh`: linking succeeds, but a normal Zig `main` can still hit AppKit `EXC_BAD_INSTRUCTION` before the window appears (same class of issue as Nim and Free Pascal). Prefer the **shared** library for interactive GUI work on Darwin.
+**macOS:** Static linking with the archive order and frameworks used in **`examples/zig/build_static.sh`** matches the C examples and is the normal path for **`minimal.zig`** and the Zig todo sample. **Optional:** link **`libnativeview.dylib`** (build **`nativeview_shared`** with **`cmake -DNV_BUILD_SHARED=ON`**) if you prefer a shared library. (Some other language runtimes have hit AppKit startup edge cases when static-linking GUI code; the checked-in Zig samples do not require shared linking.)
 
 This guide is for **Zig** users who embed nativeview through **`bindings/zig/nativeview.zig`**, which mirrors the public C API in `include/nv.h` and `include/nv_hotkey.h`, plus `nv_version_string`, `nv_get_version_info`, and `nv_bench_now` from `include/nv_util.h` (included by `nv.h`).
 
@@ -33,7 +33,7 @@ The checked-in sample uses this pattern in **`examples/zig/build_static.sh`** / 
 
 5. **MSVC:** link the `.lib` archives with **`/WHOLEARCHIVE:`** per archive when needed (see the `nativeview_shared` block in the root `CMakeLists.txt`). Add WebView2 + Win32 system libraries (see **`examples/nim/build_static.ps1`**). Do **not** define `NV_SHARED` for a fully static consumer that never includes `nv.h` in a separate C translation unit.
 
-6. **macOS (archives):** archive order matches the C **`hello`** target / `examples/pascal/build_static_example.sh` (platform → runtime → ops → ipc → core). Use **`zig build-exe`** **`-framework Carbon`** **`-framework Cocoa`** **`-framework CoreServices`** **`-framework WebKit`** **`-framework UserNotifications`** **`-lobjc`**. Read the **warning at the top of this file** before relying on static for GUI.
+6. **macOS (archives):** archive order matches the C **`hello`** target / `examples/pascal/build_static_example.sh` (platform → runtime → ops → ipc → core). Use **`zig build-exe`** **`-framework Carbon`** **`-framework Cocoa`** **`-framework CoreServices`** **`-framework WebKit`** **`-framework UserNotifications`** **`-lobjc`**. Shared **`libnativeview.dylib`** remains optional if you prefer that layout (see **Shared library** below).
 
 ## Shared library (optional)
 

@@ -6,8 +6,6 @@
 #   NV_TODO_SKIP_UI_BUILD=ON  — embed ../ui/fallback_index.html only (no npm)
 #   NV_CMAKE_BUILD_DIR        — CMake binary dir (default: repo build-rust-todo-static)
 #   NV_JOBS, CMAKE_BUILD_TYPE — same spirit as nim_todo/build_static.sh
-#
-# macOS: static link may crash at launch; prefer shared nativeview (see docs/Nim.md).
 set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)"
@@ -93,7 +91,6 @@ Darwin)
   "$CARGO" build --release --features gui
   cp -f "$SCRIPT_DIR/target/release/rust_todo" "$SCRIPT_DIR/rust_todo"
   echo "Built: $SCRIPT_DIR/rust_todo"
-  echo "On macOS, if the window crashes at launch, use shared nativeview (see docs/Nim.md)."
   ;;
 *)
   echo "Unsupported host for this script: $(uname -s). Adapt RUSTFLAGS from docs/Nim.md / docs/Zig.md."

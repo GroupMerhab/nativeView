@@ -27,4 +27,4 @@ Output binary: `./nim_todo`. Optional DB path: first CLI argument (default `./to
 
 ## macOS
 
-Static linking may crash before the window appears; use shared `libnativeview` and `-d:nativeviewShared` as in [examples/nim/README.md](../../nim/README.md).
+`build_static.sh` static-links nativeview the same way as the C todo example (archives + frameworks). For an optional **`libnativeview.dylib`** workflow with **`-d:nativeviewShared`**, see [examples/nim/README.md](../../nim/README.md).

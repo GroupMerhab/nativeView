@@ -10,7 +10,9 @@
 //! - **External / multi-archive static** (CMake modules): `--no-default-features --features link-none`
 //!   and pass the archive chain (`-Wl,--start-group` …) via `RUSTFLAGS` / `build.rs`, as in
 //!   `docs/Nim.md` / `docs/Zig.md`.
-//! - **macOS GUI:** prefer the shared library; static startup can conflict with AppKit (see `docs/Nim.md`).
+//! - **macOS:** static multi-archive linking via `RUSTFLAGS` matches the C/Zig examples and is the
+//!   normal path for this repo’s `rust_todo` script. Use **`link-shared`** + **`libnativeview.dylib`**
+//!   if you prefer a shared library (see **`docs/Nim.md`** / **`docs/Zig.md`**).
 //!
 //! # Callbacks and lifetimes
 //! - Register only `unsafe extern "C" fn` with stable addresses for the whole registration window.

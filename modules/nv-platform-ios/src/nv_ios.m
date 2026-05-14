@@ -9,6 +9,10 @@
 #include "nv_window_internal.h"
 #include "nv_ipc_internal.h"
 #include "nv_window_manager.h"
+#include "nv.h"
+#include <pthread.h>
+
+NV_API int nv_is_process_main_thread(void) { return pthread_main_np() != 0; }
 
 static int nv_ios_is_about_blank(const char* url) {
   if (!url) return 0;

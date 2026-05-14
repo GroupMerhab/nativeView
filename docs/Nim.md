@@ -1,6 +1,6 @@
 # Nim — nativeview
 
-**On macOS, static linking tends to crash before the window appears (AppKit event-loop ownership). Use `-d:nativeviewShared` for macOS GUI apps.** This matches the warning in `examples/pascal/build_static_example.sh`: linking succeeds, but a normal Nim `main` can still hit AppKit `EXC_BAD_INSTRUCTION` before the window appears (same class of issue as Free Pascal’s default `program` startup). Prefer the **shared** `libnativeview.dylib` path for interactive GUI work on Darwin.
+**macOS:** Static linking with the archive order and frameworks used in **`examples/nim/build_static.sh`** matches the C examples and is the normal path for **`minimal.nim`** and the Nim todo sample. **Optional:** use **`-d:nativeviewShared`** with **`libnativeview.dylib`** if you prefer a shared library (see below). (Some other language runtimes have hit AppKit startup edge cases when static-linking GUI code; Nim’s default `main` in these examples does not require shared linking.)
 
 This guide is for **Nim** users who embed nativeview through **`bindings/nim/nativeview.nim`**, which mirrors the public C API in `include/nv.h` and `include/nv_hotkey.h`, plus `nv_version_string`, `nv_get_version_info`, and `nv_bench_now` from `include/nv_util.h` (included by `nv.h`).
 
@@ -21,7 +21,7 @@ This guide is for **Nim** users who embed nativeview through **`bindings/nim/nat
 
 5. **Linux**: after the `--start-group` archive list, append everything **`nv-platform-linux`** needs: at minimum **`pkg-config --libs webkit2gtk-4.1`**. Optional packages pulled when CMake finds them: **ayatana-appindicator**, **appindicator3**, **libnotify**, **x11** — mirror `modules/nv-platform-linux/CMakeLists.txt` or reuse the `pkg-config` probes in **`examples/nim/build_static.sh`**.
 
-6. **macOS (archives)**: archive order matches the C **`hello`** target / `examples/pascal/build_static_example.sh` (platform → runtime → ops → ipc → core). You still need **`-framework Carbon -framework Cocoa -framework CoreServices -framework WebKit -framework UserNotifications -lobjc`**. Read the **warning at the top of this file** before relying on static for GUI.
+6. **macOS (archives)**: archive order matches the C **`hello`** target / `examples/pascal/build_static_example.sh` (platform → runtime → ops → ipc → core). You still need **`-framework Carbon -framework Cocoa -framework CoreServices -framework WebKit -framework UserNotifications -lobjc`**. Shared **`libnativeview.dylib`** remains optional if you prefer that layout (see **Shared library** above).
 
 7. Checked-in template: **`bindings/nim/config.static.nims.example`** — copy to **`config.nims`**, set **`NV_CMAKE_BUILD`**, and extend the Linux `pkg-config` line as needed.
 

@@ -224,6 +224,11 @@ NV_API void nv_eval_js(nv_window_t* window, const char* js);
 NV_API void nv_eval_js_batch(nv_window_t* window, const char** scripts,
                               size_t count);
 
+/** Non-zero if the calling thread is the process primordial (first) thread.
+ *  On macOS, AppKit expects UI setup on this thread; JNI hosts typically need
+ *  java -XstartOnFirstThread (see docs/Java.md). Other platforms return 1. */
+NV_API int nv_is_process_main_thread(void);
+
 /* =============================================================================
  * Messaging (C↔JavaScript Communication)
  * =============================================================================

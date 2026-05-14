@@ -2,9 +2,8 @@
 # Static-link nativeview archives into the Zig minimal sample.
 # Run from examples/zig.
 #
-# macOS note: linking succeeds, but a normal Zig main can still hit AppKit
-# EXC_BAD_INSTRUCTION before the window appears (same class of issue as Nim/FPC).
-# Use shared libnativeview.dylib for macOS GUI (see README.md).
+# macOS: static archives + frameworks match the C examples; minimal.zig is expected to run.
+# Optional: link libnativeview.dylib from nativeview_shared (see README.md / docs/Zig.md).
 set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../.." && pwd)"
@@ -61,7 +60,6 @@ Darwin)
     "$NV_CORE" \
     -framework Carbon -framework Cocoa -framework CoreServices -framework WebKit -framework UserNotifications -lobjc
   echo "Built: $SCRIPT_DIR/minimal (static nativeview)"
-  echo "On macOS, if the window crashes at launch, use shared + libnativeview.dylib (see README.md)."
   ;;
 *)
   echo "Unsupported host for this script: $(uname -s). See docs/Zig.md for manual link flags."

@@ -53,6 +53,8 @@
 #include "nv_window_manager.h"
 #include "nv.h"
 
+NV_API int nv_is_process_main_thread(void) { return 1; }
+
 /* =============================================================================
  * App-level Platform State
  * =============================================================================

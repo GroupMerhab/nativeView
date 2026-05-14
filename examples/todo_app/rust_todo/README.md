@@ -28,4 +28,4 @@ Output binary: `./rust_todo` (copied from `target/release/rust_todo`). Optional 
 
 ## macOS
 
-Static linking may crash before the window appears; prefer shared `libnativeview` as in [examples/nim/README.md](../../../nim/README.md) (build with `NV_BUILD_SHARED=ON` and link the `nativeview` crate with `link-shared` instead of this script’s static `RUSTFLAGS` chain).
+`build_static.sh` passes the same static archive + framework order as the C and Nim todo examples (`RUSTFLAGS` with `-Clink-arg=…`). For an optional **`libnativeview.dylib`** build, configure CMake with **`NV_BUILD_SHARED=ON`**, build **`nativeview_shared`**, and use the **`nativeview`** crate with **`link-shared`** instead of **`link-none`** (see [examples/nim/README.md](../../../nim/README.md) and **`docs/Nim.md`** / **`docs/Zig.md`** for the shared pattern).

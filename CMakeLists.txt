@@ -215,6 +215,17 @@ if(NV_BUILD_SHARED)
   endif()
 endif()
 
+option(NV_BUILD_JAVA_JNI "Build desktop Java JNI library (nativeview_jni; requires NV_BUILD_SHARED)" OFF)
+if(NV_BUILD_JAVA_JNI)
+  if(NOT NV_BUILD_SHARED)
+    message(FATAL_ERROR "NV_BUILD_JAVA_JNI requires NV_BUILD_SHARED=ON")
+  endif()
+  if(NV_IS_MOBILE)
+    message(FATAL_ERROR "NV_BUILD_JAVA_JNI is only for desktop host builds")
+  endif()
+  add_subdirectory(bindings/java)
+endif()
+
 # =============================================================================
 # Planned UI modules — added optionally so the build does not break when
 # sources are not yet present. Order matters: nv-ui before nv-designer,
@@ -254,6 +265,7 @@ set(NV_FULL_STACK_TESTS
   test_window
   test_window_manager
   test_integration
+  test_main_thread
   test_platform_api_dispatch
   test_op_app
   test_op_app_menu
@@ -278,6 +290,7 @@ set(test_ipc_DIR              modules/nv-ipc)
 set(test_window_DIR           modules/nv-runtime)
 set(test_window_manager_DIR   modules/nv-runtime)
 set(test_integration_DIR      modules/nv-runtime)
+set(test_main_thread_DIR      modules/nv-runtime)
 set(test_platform_api_dispatch_DIR modules/nv-runtime)
 set(test_op_app_DIR           modules/nv-ops)
 set(test_op_app_menu_DIR      modules/nv-ops)

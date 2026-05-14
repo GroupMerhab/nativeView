@@ -3,10 +3,11 @@
 Layout:
 
 - **`c_todo/`** — C sources, CMake, embed step, and `clean_build.sh` (executable **`todo_app`**).
-- **`ui/`** — Vue 3 + Pinia + Vite (`vite-plugin-singlefile`) → `ui/dist/index.html`; shared by **`c_todo`**, **`nim_todo`**, and **`zig_todo`**.
+- **`ui/`** — Vue 3 + Pinia + Vite (`vite-plugin-singlefile`) → `ui/dist/index.html`; shared by the language ports below.
 - **`nim_todo/`** — Nim port (`todo_app.nim` + SQLite + bridge); see [nim_todo/README.md](nim_todo/README.md). Executable **`nim_todo`** via `nim_todo/build_static.sh`.
 - **`rust_todo/`** — Rust port (`src/main.rs` + SQLite + bridge); see [rust_todo/README.md](rust_todo/README.md). Executable **`rust_todo`** via `rust_todo/build_static.sh`.
 - **`py_todo/`** — Python port (`todo_app.py` + SQLite + bridge); see [py_todo/README.md](py_todo/README.md). Run **`python3 todo_app.py`** after `py_todo/build_shared.sh` (shared `libnativeview` + embedded HTML).
+- **`java_todo/`** — Java port (`TodoApp` + SQLite + bridge); see [java_todo/README.md](java_todo/README.md). Run **`java … io.jamharah.todo.TodoApp`** after `java_todo/build_shared.sh` (shared `libnativeview` + JNI + packaged UI).
 - **`zig_todo/`** — Zig port (`todo_app.zig` + SQLite + bridge); see [zig_todo/README.md](zig_todo/README.md). Executable **`zig_todo`** via `zig_todo/build_static.sh`.
 
 ## Build (Zig)
@@ -56,6 +57,18 @@ From `py_todo/`:
 Skip npm (fallback HTML only): `NV_TODO_SKIP_UI_BUILD=ON ./build_shared.sh`
 
 Unit tests: `./run_tests.sh`
+
+## Build (Java)
+
+From `java_todo/`:
+
+```bash
+./build_shared.sh
+```
+
+Skip npm (fallback HTML only): `NV_TODO_SKIP_UI_BUILD=ON ./build_shared.sh`
+
+Unit tests: `./run_tests.sh` (requires Maven)
 
 ## Build (C)
 

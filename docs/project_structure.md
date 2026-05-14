@@ -8,6 +8,7 @@ nativeView/
 ├── include/                # Public headers (stable C API surface)
 ├── modules/                # Modular implementation (each module is standalone)
 ├── bindings/pascal/        # Free Pascal import unit (nativeview.pas) for nv.h
+├── bindings/java/          # Desktop JNI (io.jamharah.nativeview); see docs/Java.md
 ├── js/                     # JavaScript bridge sources, build tools, tests, types
 ├── examples/               # Small apps exercising the public C API
 │   └── pascal/             # FPC sample: thin .lpr + nv_* app unit (see docs/Pascal.md)

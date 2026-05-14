@@ -90,9 +90,10 @@ add_executable(todo_app
   "${CMAKE_CURRENT_SOURCE_DIR}/main.c"
   $<TARGET_OBJECTS:todo_app_impl>
 )
-target_link_libraries(todo_app PRIVATE
-  "$<LINK_GROUP:RESCAN,nativeview,todo_bridge,todo_store>"
-)
+# $<LINK_GROUP:RESCAN,...> is not supported for plain C targets on some toolchains
+# (e.g. AppleClang) and does not apply across INTERFACE targets like `nativeview`.
+# Link order: full stack first, then app-side static libs (mirrors examples/nim).
+target_link_libraries(todo_app PRIVATE nativeview todo_bridge todo_store)
 
 add_library(todo_app_core STATIC $<TARGET_OBJECTS:todo_app_impl>)
 target_include_directories(todo_app_core PUBLIC

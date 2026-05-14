@@ -6,8 +6,6 @@
 #   NV_TODO_SKIP_UI_BUILD=ON  — embed ../ui/fallback_index.html only (no npm)
 #   NV_CMAKE_BUILD_DIR        — CMake binary dir (default: repo build-zig-todo-static)
 #   NV_JOBS, CMAKE_BUILD_TYPE, ZIG — same spirit as examples/zig/build_static.sh
-#
-# macOS: static link may crash at launch; prefer shared nativeview (see docs/Zig.md).
 set -euo pipefail
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)"
@@ -77,8 +75,15 @@ ZIG_ROOT=(
   -Membed="$OUT_HTML_ZIG"
   -lc
   -OReleaseSmall
+  -fstrip
   -femit-bin="$SCRIPT_DIR/zig_todo"
 )
+# Zig is the final link driver; CMake's Release linker flags do not apply here.
+# Strip Zig's debug symbols and GC unreachable sections from static archives.
+case "$(uname -s)" in
+Darwin) ZIG_ROOT+=(-dead_strip) ;;
+Linux) ZIG_ROOT+=(--gc-sections) ;;
+esac
 
 case "$(uname -s)" in
 Linux)
@@ -121,7 +126,6 @@ Darwin)
     -framework Carbon -framework Cocoa -framework CoreServices -framework WebKit -framework UserNotifications -lobjc \
     $SQLITE_LIBS
   echo "Built: $SCRIPT_DIR/zig_todo"
-  echo "On macOS, if the window crashes at launch, use shared libnativeview.dylib (see docs/Zig.md)."
   ;;
 *)
   echo "Unsupported host for this script: $(uname -s). See docs/Zig.md for manual link flags."
