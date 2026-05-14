@@ -1,6 +1,7 @@
 /* app.setMenu — JSON menu tree → nv_menu_item_t → nv_app_set_menu */
 
 #include "nv_op_app.h"
+#include "nv_core_internal.h"
 #include "nv_window_internal.h"
 #include "nv_menu.h"
 #include "nv_json.h"
@@ -108,14 +109,6 @@ static int parse_root_array(nv_arena_t* arena, const nv_json_val_t* arr, nv_menu
 
 NV_INTERNAL void nv_op_app_set_menu(nv_window_t* w, int seq, const nv_json_val_t* args,
                                     nv_arena_t* arena) {
-#if defined(_WIN32)
-  (void)args;
-  (void)arena;
-  if (!w) {
-    return;
-  }
-  nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "app menu is not supported on Windows", arena);
-#else
   if (!w || !w->app) {
     if (w) {
       nv_ipc_reply_err(w, seq, "ERR_INVALID_ARG", "no application context", arena);
@@ -137,7 +130,11 @@ NV_INTERNAL void nv_op_app_set_menu(nv_window_t* w, int seq, const nv_json_val_t
     nv_ipc_reply_err(w, seq, "ERR_INVALID_ARG", "failed to parse menu items", arena);
     return;
   }
-  nv_app_set_menu(w->app, items, count);
+  const nv_platform_api_t* api = &w->app->platform_api;
+  if (!api->app_set_menu) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "app menu not supported", arena);
+    return;
+  }
+  api->app_set_menu(w, items, count);
   nv_ipc_reply_ok(w, seq, nv_json_object(arena), arena);
-#endif
 }

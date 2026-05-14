@@ -13,6 +13,22 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_compile_definitions(_GNU_SOURCE)
 endif()
 
+option(NV_ENFORCE_FILE_LIMITS "Fail configure if new/modified sources exceed repo line limits" ON)
+if(NV_ENFORCE_FILE_LIMITS)
+  execute_process(
+    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_file_lengths.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    RESULT_VARIABLE _nv_file_len_rc
+    OUTPUT_VARIABLE _nv_file_len_out
+    ERROR_VARIABLE _nv_file_len_err
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_STRIP_TRAILING_WHITESPACE
+  )
+  if(NOT _nv_file_len_rc EQUAL 0)
+    message(FATAL_ERROR "File length check failed:\n${_nv_file_len_err}\n(set NV_ENFORCE_FILE_LIMITS=OFF to bypass)")
+  endif()
+endif()
+
 # =============================================================================
 # Shared library option (declared early so subdirectories inherit PIC flag)
 # =============================================================================
@@ -22,7 +38,7 @@ option(NV_BUILD_SHARED "Build nativeview as a shared library (.dll/.so/.dylib)" 
 # Static archives linked into a shared lib must be position-independent on ELF
 # platforms.  Set this before any add_subdirectory() calls so every module
 # picks it up.
-if(NV_BUILD_SHARED AND UNIX AND NOT APPLE)
+if((NV_BUILD_SHARED AND UNIX AND NOT APPLE) OR CMAKE_SYSTEM_NAME STREQUAL "Android")
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
@@ -76,12 +92,22 @@ option(NV_BUILD_UI "Build nv-ui and dependent modules (requires Vue bundle)" ON)
 
 # Determine platform module name before subdirectories are processed.
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/NvDetectWindowsPeToolchain.cmake)
-if(APPLE)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(NV_PLATFORM_MODULE nv-platform-ios)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
+  set(NV_PLATFORM_MODULE nv-platform-android)
+elseif(APPLE)
   set(NV_PLATFORM_MODULE nv-platform-mac)
 elseif(NV_WINDOWS_PE_TOOLCHAIN)
   set(NV_PLATFORM_MODULE nv-platform-win)
 elseif(UNIX AND NOT APPLE)
   set(NV_PLATFORM_MODULE nv-platform-linux)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR CMAKE_SYSTEM_NAME STREQUAL "Android")
+  set(NV_IS_MOBILE TRUE)
+else()
+  set(NV_IS_MOBILE FALSE)
 endif()
 
 # Tests that need the full stack link against nativeview (defined after platform)
@@ -213,9 +239,14 @@ endif()
 # Set NV_BUILD_TESTS=OFF when embedding (e.g. from elkotobi) to avoid building tests.
 # =============================================================================
 
-option(NV_BUILD_TESTS "Build nativeView unit tests" ON)
+if(NV_IS_MOBILE)
+  set(_nv_build_tests_default OFF)
+else()
+  set(_nv_build_tests_default ON)
+endif()
+option(NV_BUILD_TESTS "Build nativeView unit tests" ${_nv_build_tests_default})
 
-if(NV_BUILD_TESTS)
+if(NV_BUILD_TESTS AND NOT NV_IS_MOBILE)
 enable_testing()
 
 set(NV_FULL_STACK_TESTS
@@ -223,6 +254,7 @@ set(NV_FULL_STACK_TESTS
   test_window
   test_window_manager
   test_integration
+  test_platform_api_dispatch
   test_op_app
   test_op_app_menu
   test_op_clipboard
@@ -246,6 +278,7 @@ set(test_ipc_DIR              modules/nv-ipc)
 set(test_window_DIR           modules/nv-runtime)
 set(test_window_manager_DIR   modules/nv-runtime)
 set(test_integration_DIR      modules/nv-runtime)
+set(test_platform_api_dispatch_DIR modules/nv-runtime)
 set(test_op_app_DIR           modules/nv-ops)
 set(test_op_app_menu_DIR      modules/nv-ops)
 set(test_op_clipboard_DIR     modules/nv-ops)
@@ -276,38 +309,361 @@ foreach(t ${NV_FULL_STACK_TESTS})
   target_compile_definitions(${t} PRIVATE NV_TEST)
   add_test(NAME ${t} COMMAND ${t})
 endforeach()
-endif(NV_BUILD_TESTS)
+endif()
 
 # =============================================================================
 # Benchmarks
 # =============================================================================
 
-add_executable(bench_ipc benchmarks/bench_ipc.c)
-target_link_libraries(bench_ipc nativeview)
-target_include_directories(bench_ipc PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
+if(NOT NV_IS_MOBILE)
+  add_executable(bench_ipc benchmarks/bench_ipc.c)
+  target_link_libraries(bench_ipc nativeview)
+  target_include_directories(bench_ipc PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+  )
 
-add_executable(bench_shm benchmarks/bench_shm.c)
-target_link_libraries(bench_shm nv-ipc)
-target_include_directories(bench_shm PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+  add_executable(bench_shm benchmarks/bench_shm.c)
+  target_link_libraries(bench_shm nv-ipc)
+  target_include_directories(bench_shm PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+  )
+
+  if(APPLE)
+    if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64")
+      set(_nv_ios_sim_arch "arm64")
+    else()
+      set(_nv_ios_sim_arch "x86_64")
+    endif()
+
+    set(_nv_ios_smoke_dir "${CMAKE_CURRENT_SOURCE_DIR}/examples/ios_runner/_xcode")
+    add_custom_target(ios_smoke_build
+      COMMAND ${CMAKE_COMMAND} -S ${CMAKE_CURRENT_SOURCE_DIR} -B ${_nv_ios_smoke_dir}
+        -G Xcode
+        -DCMAKE_SYSTEM_NAME=iOS
+        -DCMAKE_OSX_SYSROOT=iphonesimulator
+        -DCMAKE_OSX_ARCHITECTURES=${_nv_ios_sim_arch}
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0
+        -DNV_BUILD_TESTS=OFF
+        -DNV_BUILD_UI=OFF
+        -DNV_BUILD_SHARED=OFF
+      COMMAND ${CMAKE_COMMAND} --build ${_nv_ios_smoke_dir} --target ios_runner
+      COMMAND ${CMAKE_COMMAND} --build ${_nv_ios_smoke_dir} --target ios_runner_tests
+      COMMAND ${CMAKE_COMMAND} --build ${_nv_ios_smoke_dir} --target ios_runner_scheme_fix
+    )
+  else()
+    add_custom_target(ios_smoke_build
+      COMMAND ${CMAKE_COMMAND} -E echo "ios_smoke_build is only supported on Apple hosts"
+      COMMAND ${CMAKE_COMMAND} -E false
+    )
+  endif()
+
+  set(_nv_android_ndk "$ENV{ANDROID_NDK}")
+  if(NOT _nv_android_ndk)
+    set(_nv_android_ndk "$ENV{ANDROID_NDK_HOME}")
+  endif()
+  if(_nv_android_ndk)
+    set(_nv_android_toolchain "${_nv_android_ndk}/build/cmake/android.toolchain.cmake")
+    set(_nv_android_smoke_dir "${CMAKE_CURRENT_SOURCE_DIR}/examples/android_runner/_cmake_smoke")
+    add_custom_target(android_smoke_build
+      COMMAND ${CMAKE_COMMAND} -S ${CMAKE_CURRENT_SOURCE_DIR} -B ${_nv_android_smoke_dir}
+        -DCMAKE_TOOLCHAIN_FILE=${_nv_android_toolchain}
+        -DANDROID_ABI=arm64-v8a
+        -DANDROID_PLATFORM=android-24
+        -DNV_BUILD_TESTS=OFF
+        -DNV_BUILD_UI=OFF
+        -DNV_BUILD_SHARED=OFF
+      COMMAND ${CMAKE_COMMAND} --build ${_nv_android_smoke_dir} --target nv-platform-android
+    )
+  else()
+    add_custom_target(android_smoke_build
+      COMMAND ${CMAKE_COMMAND} -E echo "ANDROID_NDK or ANDROID_NDK_HOME is not set"
+      COMMAND ${CMAKE_COMMAND} -E false
+    )
+  endif()
+endif()
 
 # =============================================================================
 # Examples
 # =============================================================================
 
-add_executable(hello examples/hello/main.c)
-target_link_libraries(hello nativeview)
-target_include_directories(hello PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(_nv_ios_runner_plist "${CMAKE_CURRENT_BINARY_DIR}/ios_runner_Info.plist")
+  file(WRITE "${_nv_ios_runner_plist}" [=[
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleExecutable</key>
+  <string>$(EXECUTABLE_NAME)</string>
+  <key>CFBundleIdentifier</key>
+  <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>$(PRODUCT_NAME)</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSRequiresIPhoneOS</key>
+  <true/>
+  <key>UIApplicationSceneManifest</key>
+  <dict>
+    <key>UIApplicationSupportsMultipleScenes</key>
+    <false/>
+    <key>UISceneConfigurations</key>
+    <dict>
+      <key>UIWindowSceneSessionRoleApplication</key>
+      <array>
+        <dict>
+          <key>UISceneConfigurationName</key>
+          <string>Default Configuration</string>
+          <key>UISceneDelegateClassName</key>
+          <string>NVIOSSceneDelegate</string>
+        </dict>
+      </array>
+    </dict>
+  </dict>
+</dict>
+</plist>
+]=])
+
+  set(_nv_ios_runner_tests_plist "${CMAKE_CURRENT_BINARY_DIR}/ios_runner_tests_Info.plist")
+  file(WRITE "${_nv_ios_runner_tests_plist}" [=[
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleExecutable</key>
+  <string>$(EXECUTABLE_NAME)</string>
+  <key>CFBundleIdentifier</key>
+  <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>$(PRODUCT_NAME)</string>
+  <key>CFBundlePackageType</key>
+  <string>BNDL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+</dict>
+</plist>
+]=])
+
+  add_executable(ios_runner MACOSX_BUNDLE examples/ios_runner/main.m)
+  target_link_libraries(ios_runner PRIVATE nativeview)
+  target_include_directories(ios_runner PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+  )
+  set_target_properties(ios_runner PROPERTIES
+    XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "14.0"
+    XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.nativeview.iosRunner"
+    XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+    XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO"
+    MACOSX_BUNDLE_INFO_PLIST "${_nv_ios_runner_plist}"
+  )
+
+  add_library(ios_runner_tests MODULE examples/ios_runner/ios_smoke_tests.m)
+  target_link_libraries(ios_runner_tests PRIVATE
+    nativeview
+    "-framework XCTest"
+    "-framework Foundation"
+    "-framework UIKit"
+  )
+  target_include_directories(ios_runner_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+  )
+  set_target_properties(ios_runner_tests PROPERTIES
+    BUNDLE TRUE
+    XCTEST TRUE
+    XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "14.0"
+    XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.nativeview.iosRunnerTests"
+    XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO"
+    XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO"
+    XCODE_ATTRIBUTE_PRODUCT_TYPE "com.apple.product-type.bundle.unit-test"
+    XCODE_ATTRIBUTE_WRAPPER_EXTENSION "xctest"
+    XCODE_ATTRIBUTE_SKIP_INSTALL "YES"
+    XCODE_ATTRIBUTE_TEST_HOST "$(BUILT_PRODUCTS_DIR)/ios_runner.app/ios_runner"
+    XCODE_ATTRIBUTE_BUNDLE_LOADER "$(BUILT_PRODUCTS_DIR)/ios_runner.app/ios_runner"
+    MACOSX_BUNDLE_INFO_PLIST "${_nv_ios_runner_tests_plist}"
+  )
+
+  set_property(TARGET ios_runner PROPERTY XCODE_GENERATE_SCHEME YES)
+  set_property(TARGET ios_runner_tests PROPERTY XCODE_GENERATE_SCHEME YES)
+
+  set(_nv_xcodeproj_path "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.xcodeproj")
+  file(RELATIVE_PATH _nv_xcodeproj_rel "${CMAKE_SOURCE_DIR}" "${_nv_xcodeproj_path}")
+
+  set(_nv_ios_scheme_fix_script "${CMAKE_CURRENT_BINARY_DIR}/nv_fix_ios_runner_scheme.cmake")
+  file(WRITE "${_nv_ios_scheme_fix_script}" [=[
+if(NOT DEFINED NV_PBXPROJ OR NOT DEFINED NV_SCHEME OR NOT DEFINED NV_CONTAINER)
+  message(FATAL_ERROR "nv_fix_ios_runner_scheme: missing NV_PBXPROJ/NV_SCHEME/NV_CONTAINER")
+endif()
+
+file(STRINGS "${NV_PBXPROJ}" _pbxproj_lines)
+
+set(_id_runner "")
+set(_id_tests "")
+set(_in_native_target FALSE)
+foreach(_line IN LISTS _pbxproj_lines)
+  if(_line MATCHES "^/\\* Begin PBXNativeTarget section \\*/")
+    set(_in_native_target TRUE)
+  elseif(_line MATCHES "^/\\* End PBXNativeTarget section \\*/")
+    set(_in_native_target FALSE)
+  endif()
+
+  if(_in_native_target)
+    if(_id_runner STREQUAL "" AND _line MATCHES "/\\* ios_runner \\*/ = \\{")
+      string(STRIP "${_line}" _line_s)
+      string(REGEX MATCH "^[0-9A-Z]+" _id_runner "${_line_s}")
+    endif()
+    if(_id_tests STREQUAL "" AND _line MATCHES "/\\* ios_runner_tests \\*/ = \\{")
+      string(STRIP "${_line}" _line_s)
+      string(REGEX MATCH "^[0-9A-Z]+" _id_tests "${_line_s}")
+    endif()
+  endif()
+endforeach()
+
+if(_id_runner STREQUAL "" OR _id_tests STREQUAL "")
+  message(FATAL_ERROR "nv_fix_ios_runner_scheme: failed to locate blueprint IDs (ios_runner='${_id_runner}', ios_runner_tests='${_id_tests}')")
+endif()
+
+get_filename_component(_scheme_dir "${NV_SCHEME}" DIRECTORY)
+file(MAKE_DIRECTORY "${_scheme_dir}")
+
+file(WRITE "${NV_SCHEME}" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+file(APPEND "${NV_SCHEME}" "<Scheme\n")
+file(APPEND "${NV_SCHEME}" "   LastUpgradeVersion=\"2650\"\n")
+file(APPEND "${NV_SCHEME}" "   version=\"1.3\"\n")
+file(APPEND "${NV_SCHEME}" "   >\n")
+file(APPEND "${NV_SCHEME}" "   <BuildAction\n")
+file(APPEND "${NV_SCHEME}" "      parallelizeBuildables=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "      buildImplicitDependencies=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "      >\n")
+file(APPEND "${NV_SCHEME}" "      <BuildActionEntries>\n")
+file(APPEND "${NV_SCHEME}" "         <BuildActionEntry\n")
+file(APPEND "${NV_SCHEME}" "            buildForTesting=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "            buildForRunning=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "            buildForProfiling=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "            buildForArchiving=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "            buildForAnalyzing=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "            >\n")
+file(APPEND "${NV_SCHEME}" "            <BuildableReference\n")
+file(APPEND "${NV_SCHEME}" "               BuildableIdentifier=\"primary\"\n")
+file(APPEND "${NV_SCHEME}" "               BlueprintIdentifier=\"${_id_runner}\"\n")
+file(APPEND "${NV_SCHEME}" "               BuildableName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "               BlueprintName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "               ReferencedContainer=\"container:${NV_CONTAINER}\"/>\n")
+file(APPEND "${NV_SCHEME}" "         </BuildActionEntry>\n")
+file(APPEND "${NV_SCHEME}" "      </BuildActionEntries>\n")
+file(APPEND "${NV_SCHEME}" "   </BuildAction>\n")
+file(APPEND "${NV_SCHEME}" "   <TestAction\n")
+file(APPEND "${NV_SCHEME}" "      buildConfiguration=\"Debug\"\n")
+file(APPEND "${NV_SCHEME}" "      selectedDebuggerIdentifier=\"Xcode.DebuggerFoundation.Debugger.LLDB\"\n")
+file(APPEND "${NV_SCHEME}" "      selectedLauncherIdentifier=\"Xcode.DebuggerFoundation.Launcher.LLDB\"\n")
+file(APPEND "${NV_SCHEME}" "      shouldUseLaunchSchemeArgsEnv=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "      >\n")
+file(APPEND "${NV_SCHEME}" "      <Testables>\n")
+file(APPEND "${NV_SCHEME}" "         <TestableReference skipped=\"NO\">\n")
+file(APPEND "${NV_SCHEME}" "            <BuildableReference\n")
+file(APPEND "${NV_SCHEME}" "               BuildableIdentifier=\"primary\"\n")
+file(APPEND "${NV_SCHEME}" "               BlueprintIdentifier=\"${_id_tests}\"\n")
+file(APPEND "${NV_SCHEME}" "               BuildableName=\"ios_runner_tests.xctest/ios_runner_tests\"\n")
+file(APPEND "${NV_SCHEME}" "               BlueprintName=\"ios_runner_tests\"\n")
+file(APPEND "${NV_SCHEME}" "               ReferencedContainer=\"container:${NV_CONTAINER}\"/>\n")
+file(APPEND "${NV_SCHEME}" "         </TestableReference>\n")
+file(APPEND "${NV_SCHEME}" "      </Testables>\n")
+file(APPEND "${NV_SCHEME}" "      <MacroExpansion>\n")
+file(APPEND "${NV_SCHEME}" "         <BuildableReference\n")
+file(APPEND "${NV_SCHEME}" "            BuildableIdentifier=\"primary\"\n")
+file(APPEND "${NV_SCHEME}" "            BlueprintIdentifier=\"${_id_runner}\"\n")
+file(APPEND "${NV_SCHEME}" "            BuildableName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "            BlueprintName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "            ReferencedContainer=\"container:${NV_CONTAINER}\"/>\n")
+file(APPEND "${NV_SCHEME}" "      </MacroExpansion>\n")
+file(APPEND "${NV_SCHEME}" "      <AdditionalOptions/>\n")
+file(APPEND "${NV_SCHEME}" "   </TestAction>\n")
+file(APPEND "${NV_SCHEME}" "   <LaunchAction\n")
+file(APPEND "${NV_SCHEME}" "      buildConfiguration=\"Debug\"\n")
+file(APPEND "${NV_SCHEME}" "      selectedDebuggerIdentifier=\"Xcode.DebuggerFoundation.Debugger.LLDB\"\n")
+file(APPEND "${NV_SCHEME}" "      selectedLauncherIdentifier=\"Xcode.DebuggerFoundation.Launcher.LLDB\"\n")
+file(APPEND "${NV_SCHEME}" "      launchStyle=\"0\"\n")
+file(APPEND "${NV_SCHEME}" "      useCustomWorkingDirectory=\"NO\"\n")
+file(APPEND "${NV_SCHEME}" "      ignoresPersistentStateOnLaunch=\"NO\"\n")
+file(APPEND "${NV_SCHEME}" "      debugDocumentVersioning=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "      debugServiceExtension=\"internal\"\n")
+file(APPEND "${NV_SCHEME}" "      allowLocationSimulation=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "      >\n")
+file(APPEND "${NV_SCHEME}" "      <BuildableProductRunnable\n")
+file(APPEND "${NV_SCHEME}" "         runnableDebuggingMode=\"0\"\n")
+file(APPEND "${NV_SCHEME}" "         >\n")
+file(APPEND "${NV_SCHEME}" "         <BuildableReference\n")
+file(APPEND "${NV_SCHEME}" "            BuildableIdentifier=\"primary\"\n")
+file(APPEND "${NV_SCHEME}" "            BlueprintIdentifier=\"${_id_runner}\"\n")
+file(APPEND "${NV_SCHEME}" "            BuildableName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "            BlueprintName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "            ReferencedContainer=\"container:${NV_CONTAINER}\"/>\n")
+file(APPEND "${NV_SCHEME}" "      </BuildableProductRunnable>\n")
+file(APPEND "${NV_SCHEME}" "      <AdditionalOptions/>\n")
+file(APPEND "${NV_SCHEME}" "   </LaunchAction>\n")
+file(APPEND "${NV_SCHEME}" "   <ProfileAction\n")
+file(APPEND "${NV_SCHEME}" "      buildConfiguration=\"Release\"\n")
+file(APPEND "${NV_SCHEME}" "      shouldUseLaunchSchemeArgsEnv=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "      savedToolIdentifier=\"\"\n")
+file(APPEND "${NV_SCHEME}" "      useCustomWorkingDirectory=\"NO\"\n")
+file(APPEND "${NV_SCHEME}" "      debugDocumentVersioning=\"YES\"\n")
+file(APPEND "${NV_SCHEME}" "      >\n")
+file(APPEND "${NV_SCHEME}" "      <BuildableProductRunnable\n")
+file(APPEND "${NV_SCHEME}" "         runnableDebuggingMode=\"0\"\n")
+file(APPEND "${NV_SCHEME}" "         >\n")
+file(APPEND "${NV_SCHEME}" "         <BuildableReference\n")
+file(APPEND "${NV_SCHEME}" "            BuildableIdentifier=\"primary\"\n")
+file(APPEND "${NV_SCHEME}" "            BlueprintIdentifier=\"${_id_runner}\"\n")
+file(APPEND "${NV_SCHEME}" "            BuildableName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "            BlueprintName=\"ios_runner\"\n")
+file(APPEND "${NV_SCHEME}" "            ReferencedContainer=\"container:${NV_CONTAINER}\"/>\n")
+file(APPEND "${NV_SCHEME}" "      </BuildableProductRunnable>\n")
+file(APPEND "${NV_SCHEME}" "   </ProfileAction>\n")
+file(APPEND "${NV_SCHEME}" "   <AnalyzeAction\n")
+file(APPEND "${NV_SCHEME}" "      buildConfiguration=\"Debug\"/>\n")
+file(APPEND "${NV_SCHEME}" "   <ArchiveAction\n")
+file(APPEND "${NV_SCHEME}" "      buildConfiguration=\"Release\"\n")
+file(APPEND "${NV_SCHEME}" "      revealArchiveInOrganizer=\"YES\"/>\n")
+file(APPEND "${NV_SCHEME}" "</Scheme>\n")
+]=])
+
+  add_custom_target(ios_runner_scheme_fix
+    COMMAND ${CMAKE_COMMAND}
+      -DNV_PBXPROJ="${_nv_xcodeproj_path}/project.pbxproj"
+      -DNV_SCHEME="${_nv_xcodeproj_path}/xcshareddata/xcschemes/ios_runner.xcscheme"
+      -DNV_CONTAINER="${_nv_xcodeproj_rel}"
+      -P "${_nv_ios_scheme_fix_script}"
+    DEPENDS ios_runner ios_runner_tests
+  )
+elseif(NOT NV_IS_MOBILE)
+  add_executable(hello examples/hello/main.c)
+  target_link_libraries(hello nativeview)
+  target_include_directories(hello PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+  )
+endif()
 
 # counter_ui — nv-ui component model end-to-end example
-if(NV_BUILD_UI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/nv-ui/CMakeLists.txt")
+if(NOT NV_IS_MOBILE AND NV_BUILD_UI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/nv-ui/CMakeLists.txt")
   add_executable(counter_ui examples/counter_ui/main.c)
   target_link_libraries(counter_ui PRIVATE nativeview nv-ui)
   target_include_directories(counter_ui PRIVATE
@@ -345,7 +701,9 @@ if(NV_BUILD_UI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/nv-ui/CMakeLists.
 endif()
 
 # Demo
-add_subdirectory(demo)
+if(NOT NV_IS_MOBILE)
+  add_subdirectory(demo)
+endif()
 
 # =============================================================================
 # pkg-config
@@ -361,7 +719,9 @@ configure_file(
 # Amalgamation Target
 # =============================================================================
 
-if(APPLE)
+if(NV_IS_MOBILE)
+  set(AMALG_PLATFORM "")
+elseif(APPLE)
   set(AMALG_PLATFORM mac)
 elseif(WIN32)
   set(AMALG_PLATFORM win)
@@ -369,12 +729,14 @@ else()
   set(AMALG_PLATFORM linux)
 endif()
 
-add_custom_target(amalgamate
-  COMMAND ${CMAKE_COMMAND} -E echo "Running amalgamate script for ${AMALG_PLATFORM}..."
-  COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tools/amalgamate.py --platform ${AMALG_PLATFORM} --output dist
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "Generating single-file amalgamation"
-)
+if(NOT NV_IS_MOBILE)
+  add_custom_target(amalgamate
+    COMMAND ${CMAKE_COMMAND} -E echo "Running amalgamate script for ${AMALG_PLATFORM}..."
+    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tools/amalgamate.py --platform ${AMALG_PLATFORM} --output dist
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Generating single-file amalgamation"
+  )
+endif()
 
 # =============================================================================
 # Installation

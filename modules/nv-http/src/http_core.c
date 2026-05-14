@@ -9,11 +9,11 @@
 #include "http_protocol.h"
 #include "nv_arena.h"
 #include "socket_layer.h"
+#include "util/nv_log.h"
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
-#define MAX_ROUTES 32
 #define REQUEST_BUF_SZ 8192
 #define RESPONSE_BUF_SZ 16384
 #define ARENA_PER_REQUEST_SZ (2 * 1024 * 1024)
@@ -22,7 +22,7 @@
 
 struct HttpCore {
   ServerSocket* server;
-  HttpRoute routes[MAX_ROUTES];
+  HttpRoute routes[HTTP_CORE_MAX_ROUTES];
   int route_count;
   HttpHandler default_handler;
   void* default_handler_data;
@@ -120,8 +120,13 @@ void http_core_free(HttpCore** core) {
 
 int http_core_register_route(HttpCore* core, const char* method,
     const char* path, HttpHandler handler, void* user_data) {
-  if (!core || !method || !path || !handler || core->route_count >= MAX_ROUTES)
+  if (!core || !method || !path || !handler)
     return HTTP_ERROR_INVALID;
+  if (core->route_count >= HTTP_CORE_MAX_ROUTES) {
+    NV_ERR("http_core: route table full (max %d); refusing registration for %s %s",
+        HTTP_CORE_MAX_ROUTES, method, path);
+    return HTTP_ERROR_INVALID;
+  }
   HttpRoute* r = &core->routes[core->route_count++];
   strncpy(r->method, method, sizeof(r->method) - 1);
   r->method[sizeof(r->method) - 1] = '\0';

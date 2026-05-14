@@ -36,13 +36,14 @@ extern "C" {
  * `nv_window_t` is an opaque forward declaration there.
  */
 /** Parsed accelerator for global hotkeys (internal). */
-typedef struct nv_hotkey_combo {
+struct nv_hotkey_combo {
   uint32_t mod_flags; /**< NV_HOTKEY_MOD_* bitmask */
   int is_fn;          /**< 1 = function key, 0 = letter/digit/named key */
   int fn_index;       /**< 1–24 when is_fn */
   char key_char;      /**< lowercase letter a–z, digit 0–9, or 0 when is_fn / named */
   int special;        /**< NV_HOTKEY_SPECIAL_* when !is_fn && key_char==0 */
-} nv_hotkey_combo_t;
+};
+typedef struct nv_hotkey_combo nv_hotkey_combo_t;
 
 #define NV_HOTKEY_MOD_SHIFT 1u
 #define NV_HOTKEY_MOD_CTRL 2u
@@ -149,88 +150,9 @@ NV_INTERNAL void nv_window_set_platform(nv_window_t* window, void* platform);
  */
 NV_INTERNAL nv_ipc_state_t* nv_window_get_ipc(nv_window_t* window);
 
-/* =============================================================================
- * Shell exec (platform): run `cmd` via system shell, capture stdout/stderr.
- * Returns malloc'd struct with malloc'd out/err; caller frees all.
- * =============================================================================
- */
-
-typedef struct nv_shell_result {
-  int exit_code;
-  char* out;
-  char* err;
-  int truncated; /* 1 if either stream was capped at 1 MiB */
-} nv_shell_result_t;
-
-NV_INTERNAL nv_shell_result_t* nv_mac_shell_exec(const char* cmd);
-NV_INTERNAL nv_shell_result_t* nv_win_shell_exec(const char* cmd);
-NV_INTERNAL nv_shell_result_t* nv_linux_shell_exec(const char* cmd);
-
 /** Application menu: nv_mac_menu.m, nv_linux.c, or no-op stubs in nv_win.c */
 NV_INTERNAL void nv_mac_app_set_menu(const nv_menu_item_t* items, int count);
 NV_INTERNAL void nv_linux_app_set_menu(nv_window_t* w, const nv_menu_item_t* items, int count);
-
-/* macOS menu bar extras (NSStatusItem); implemented in nv_mac.m */
-#ifdef __APPLE__
-NV_INTERNAL int nv_mac_tray_create(long long id, const char* icon_path,
-                                   const char* tooltip, nv_window_t* w);
-NV_INTERNAL int nv_mac_tray_destroy(long long id);
-NV_INTERNAL int nv_mac_tray_set_icon(long long id, const char* icon_path);
-NV_INTERNAL int nv_mac_tray_set_tooltip(long long id, const char* tooltip);
-NV_INTERNAL int nv_mac_tray_set_menu(long long id, const char** labels,
-                                     const long long* item_ids, int count);
-
-/** Local notifications (UNUserNotificationCenter / NSUserNotification); implemented in nv_mac.m */
-NV_INTERNAL int nv_mac_notification_show(long long id, const char* title, const char* body,
-                                         const char* icon_path, nv_window_t* w);
-NV_INTERNAL int nv_mac_notification_close(long long id);
-
-/** FSEvents-backed `fs.watch`; emits `fs.changed` via `nv_fs_changed_emit`. */
-NV_INTERNAL int nv_mac_fs_watch_start(long long id, const char* path, nv_window_t* w);
-NV_INTERNAL void nv_mac_fs_watch_stop(long long id);
-NV_INTERNAL void nv_mac_fs_watch_detach_for_window(nv_window_t* w);
-#endif
-
-#ifdef _WIN32
-NV_INTERNAL int nv_win_tray_create(long long id, const char* icon_path, const char* tooltip,
-                                   nv_window_t* w);
-NV_INTERNAL int nv_win_tray_destroy(long long id);
-NV_INTERNAL int nv_win_tray_set_icon(long long id, const char* icon_path);
-NV_INTERNAL int nv_win_tray_set_tooltip(long long id, const char* tooltip);
-NV_INTERNAL int nv_win_tray_set_menu(long long id, const char** labels, const long long* item_ids,
-                                     int count);
-/** WinRT toast notifications; implemented in nv_win_notification.c. Returns 0, -1 (blocked/disabled), or -2 (I/O). */
-NV_INTERNAL int nv_win_notification_show(long long id, const char* title, const char* body,
-                                         const char* icon_path, nv_window_t* w);
-NV_INTERNAL int nv_win_notification_close(long long id);
-
-/** ReadDirectoryChangesW-backed `fs.watch`. */
-NV_INTERNAL int nv_win_fs_watch_start(long long id, const char* path, nv_window_t* w);
-NV_INTERNAL void nv_win_fs_watch_stop(long long id);
-NV_INTERNAL void nv_win_fs_watch_detach_for_window(nv_window_t* w);
-#endif
-
-#if defined(__linux__) && !defined(__APPLE__)
-/** Tray hook return value mapped to IPC `ERR_NOT_SUPPORTED` in nv_op_tray.c */
-#define NV_TRAY_RC_NOT_SUPPORTED (-100)
-NV_INTERNAL int nv_linux_tray_create(long long id, const char* icon_path, const char* tooltip,
-                                     nv_window_t* w);
-NV_INTERNAL int nv_linux_tray_destroy(long long id);
-NV_INTERNAL int nv_linux_tray_set_icon(long long id, const char* icon_path);
-NV_INTERNAL int nv_linux_tray_set_tooltip(long long id, const char* tooltip);
-NV_INTERNAL int nv_linux_tray_set_menu(long long id, const char** labels, const long long* item_ids,
-                                       int count);
-/** libnotify; maps to `ERR_NOT_SUPPORTED` in nv_op_notification.c when built without libnotify. */
-#define NV_LINUX_NOTIFICATION_RC_NOT_SUPPORTED NV_TRAY_RC_NOT_SUPPORTED
-NV_INTERNAL int nv_linux_notification_show(long long id, const char* title, const char* body,
-                                           const char* icon_path, nv_window_t* w);
-NV_INTERNAL int nv_linux_notification_close(long long id);
-
-/** inotify-backed `fs.watch`. */
-NV_INTERNAL int nv_linux_fs_watch_start(long long id, const char* path, nv_window_t* w);
-NV_INTERNAL void nv_linux_fs_watch_stop(long long id);
-NV_INTERNAL void nv_linux_fs_watch_detach_for_window(nv_window_t* w);
-#endif
 
 /**
  * Build JSON `{"id":…,"path":…,"type":…}` and `nv_send(w, "fs.changed", payload)`.
@@ -299,10 +221,30 @@ NV_INTERNAL void nv_window_platform_show(nv_window_t* window);
 NV_INTERNAL void nv_window_platform_hide(nv_window_t* window);
 NV_INTERNAL void nv_window_platform_set_modal(nv_window_t* window, int enable);
 NV_INTERNAL void nv_window_platform_set_title(nv_window_t* window, const char* title);
+NV_INTERNAL void nv_window_platform_set_size(nv_window_t* window, int width, int height);
+NV_INTERNAL void nv_window_platform_get_size(nv_window_t* window, int* out_w, int* out_h);
+NV_INTERNAL void nv_window_platform_set_position(nv_window_t* window, int x, int y);
+NV_INTERNAL void nv_window_platform_get_position(nv_window_t* window, int* out_x, int* out_y);
+NV_INTERNAL void nv_window_platform_center(nv_window_t* window);
+NV_INTERNAL void nv_window_platform_minimize(nv_window_t* window);
+NV_INTERNAL void nv_window_platform_maximize(nv_window_t* window);
+NV_INTERNAL void nv_window_platform_restore(nv_window_t* window);
+NV_INTERNAL void nv_window_platform_fullscreen(nv_window_t* window, int enable);
+NV_INTERNAL int  nv_window_platform_is_fullscreen(nv_window_t* window);
+NV_INTERNAL void nv_window_platform_focus(nv_window_t* window);
+NV_INTERNAL int  nv_window_platform_is_focused(nv_window_t* window);
+NV_INTERNAL void nv_window_platform_set_resizable(nv_window_t* window, int enable);
+NV_INTERNAL void nv_window_platform_set_always_on_top(nv_window_t* window, int enable);
+NV_INTERNAL void nv_window_platform_set_opacity(nv_window_t* window, int opacity_pct);
+NV_INTERNAL void nv_window_platform_set_zoom_factor(nv_window_t* window, double factor);
+NV_INTERNAL void nv_window_platform_close(nv_window_t* window);
+
+NV_INTERNAL void nv_window_platform_load_html(nv_window_t* window, const char* html, const char* base_url);
+NV_INTERNAL void nv_window_platform_load_url(nv_window_t* window, const char* url);
+NV_INTERNAL void nv_window_platform_eval_js(nv_window_t* window, const char* js);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* NV_WINDOW_INTERNAL_H */
-

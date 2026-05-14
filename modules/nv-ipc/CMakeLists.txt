@@ -13,6 +13,8 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
+include(CheckSymbolExists)
+
 set(NV_ROOT_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
 set(NV_ROOT_SRC     "${CMAKE_CURRENT_SOURCE_DIR}/../../src")
 
@@ -37,7 +39,15 @@ target_include_directories(nv-ipc
 )
 
 target_link_libraries(nv-ipc PUBLIC nv-core)
-if(UNIX AND NOT APPLE)
+
+check_symbol_exists(shm_open "sys/mman.h;fcntl.h" NV_HAVE_SHM_OPEN)
+if(NV_HAVE_SHM_OPEN)
+  target_compile_definitions(nv-ipc PRIVATE NV_HAVE_SHM_OPEN=1)
+else()
+  target_compile_definitions(nv-ipc PRIVATE NV_HAVE_SHM_OPEN=0)
+endif()
+
+if(UNIX AND NOT APPLE AND NOT ANDROID)
   target_link_libraries(nv-ipc PUBLIC rt)
 endif()
 

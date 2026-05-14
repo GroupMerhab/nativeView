@@ -11,6 +11,11 @@
  *
  * Routes requests to handlers by method and path.
  * Manages server lifecycle and connection handling.
+ *
+ * IMPORTANT: The HTTP server is single-threaded and blocking by design. The
+ * request loop processes one connection at a time and is intended for simple,
+ * lightweight use (e.g. local/dev serving), not high-concurrency production
+ * workloads.
  */
 
 #ifndef HTTP_CORE_H
@@ -23,6 +28,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/** Maximum routes per `HttpCore` (fixed-size table). Excess registrations fail with HTTP_ERROR_INVALID. */
+#define HTTP_CORE_MAX_ROUTES 32
 
 /* Forward */
 struct ServerSocket;
@@ -78,7 +86,7 @@ void http_core_free(HttpCore** core);
 /**
  * Register route. Path may contain '*' for prefix match.
  * Method "*" matches any method.
- * @return HTTP_OK or HTTP_ERROR_INVALID (e.g. route table full)
+ * @return HTTP_OK or HTTP_ERROR_INVALID (e.g. route table full, see HTTP_CORE_MAX_ROUTES)
  */
 int http_core_register_route(HttpCore* core, const char* method,
     const char* path, HttpHandler handler, void* user_data);
@@ -97,6 +105,9 @@ void http_core_set_default_handler(HttpCore* core, HttpHandler handler,
  * Start server loop (blocking). Creates server, accepts connections,
  * parses requests, dispatches to routes, sends responses.
  * Returns when http_core_stop is called (e.g. from another thread).
+ *
+ * IMPORTANT: Single-threaded. Callers should run this on a dedicated thread if
+ * the embedding application needs to remain responsive.
  * @return HTTP_OK or HTTP_ERROR_INVALID
  */
 int http_core_start(HttpCore* core);

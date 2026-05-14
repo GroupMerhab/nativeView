@@ -2,6 +2,7 @@
 #include "nv_window_internal.h"
 #include "nv_menu.h"
 #include "nv.h"
+#include "nv_core_internal.h"
 #include "nv_arena.h"
 #include <string.h>
 
@@ -214,9 +215,10 @@ NV_INTERNAL void nv_op_window_set_zoom_factor(nv_window_t* w, int seq, const nv_
 }
 
 static void nv_op_dispatch_context_menu_platform(nv_window_t* w, const nv_menu_item_t* items, int count) {
-  nv_mac_window_set_context_menu(w, items, count);
-  nv_win_window_set_context_menu(w, items, count);
-  nv_linux_window_set_context_menu(w, items, count);
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (api && api->window_set_context_menu) {
+    api->window_set_context_menu(w, items, count);
+  }
 }
 
 static int parse_ctx_menu_skip_sep(const nv_json_val_t* el) {

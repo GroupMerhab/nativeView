@@ -4,6 +4,7 @@
  */
 #include "nv_op_app.h"
 #include "nv_window_internal.h"
+#include "nv_core_internal.h"
 #include "nv_arena.h"
 #include "nv_json.h"
 #include "nv_ipc.h"
@@ -13,8 +14,6 @@
 
 #include "test_helpers.h"
 
-/* Strong overrides for weak nv_win_get_* (MinGW/Clang on Windows). */
-#if defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))
 static char* dup_cstr(const char* s) {
   size_t n = strlen(s) + 1;
   char* out = (char*)malloc(n);
@@ -23,17 +22,11 @@ static char* dup_cstr(const char* s) {
   return out;
 }
 
-char* nv_win_get_data_dir(void) { return dup_cstr("C:\\stub\\nativeview_data"); }
-char* nv_win_get_exe_path(void) { return dup_cstr("C:\\stub\\nativeview.exe"); }
-char* nv_win_get_resource_dir(void) { return dup_cstr("C:\\stub"); }
-char* nv_win_get_locale(void) { return dup_cstr("en-GB"); }
-#endif
-
 static int tests_passed = 0, tests_failed = 0;
 static void ok(const char* name){ printf("✓ %s\n", name); tests_passed++; }
 static void fail(const char* name, const char* why){ printf("✗ %s: %s\n", name, why); tests_failed++; }
 
-static nv_window_t* make_window(void) {
+static nv_window_t* make_window(nv_app_t* app) {
   nv_window_cfg_t cfg = {
     .title = "AppOpsTest",
     .width = 640,
@@ -45,7 +38,7 @@ static nv_window_t* make_window(void) {
     .transparent = 0,
     .devtools = 0
   };
-  return nv_window_alloc(NULL, &cfg);
+  return nv_window_alloc(app, &cfg);
 }
 
 static nv_json_val_t* parse(nv_arena_t* arena, const char* s){
@@ -53,7 +46,7 @@ static nv_json_val_t* parse(nv_arena_t* arena, const char* s){
 }
 
 static void test_handshake_match_and_mismatch(void) {
-  nv_window_t* win = make_window();
+  nv_window_t* win = make_window(NULL);
   if (!win) { fail("make_window", "nv_window_alloc failed"); return; }
   nv_arena_t* arena = nv_arena_create(4096);
   if (!arena) { fail("arena", "nv_arena_create failed"); nv_window_free(win); return; }
@@ -97,7 +90,6 @@ static void test_handshake_match_and_mismatch(void) {
   nv_window_free(win);
 }
 
-#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
 static int json_field_nonempty(const char* json, const char* key) {
   if (!json || !key) return 0;
   nv_arena_t* a = nv_arena_create(2048);
@@ -109,8 +101,20 @@ static int json_field_nonempty(const char* json, const char* key) {
   return ok;
 }
 
+static char* test_get_data_dir(void) { return dup_cstr("/tmp/nativeview_data"); }
+static char* test_get_exe_path(void) { return dup_cstr("/tmp/nativeview.exe"); }
+static char* test_get_resource_dir(void) { return dup_cstr("/tmp"); }
+static char* test_get_locale(void) { return dup_cstr("en-GB"); }
 static void test_app_paths_and_locale(void) {
-  nv_window_t* win = make_window();
+  nv_app_t app;
+  memset(&app, 0, sizeof app);
+  app.platform_api.platform_name = "test";
+  app.platform_api.app_get_data_dir = test_get_data_dir;
+  app.platform_api.app_get_exe_path = test_get_exe_path;
+  app.platform_api.app_get_resource_dir = test_get_resource_dir;
+  app.platform_api.app_get_locale = test_get_locale;
+
+  nv_window_t* win = make_window(&app);
   if (!win) {
     fail("app paths", "nv_window_alloc failed");
     return;
@@ -158,17 +162,23 @@ static void test_app_paths_and_locale(void) {
     ok("app.getLocale locale");
   }
 
+  test_reset_replies();
+  nv_arena_reset(arena);
+  nv_op_app_get_platform(win, 14, NULL, arena);
+  if (!test_last_reply_ok() || !json_field_nonempty(test_last_reply_json(), "platform")) {
+    fail("app.getPlatform", test_last_reply_json() ? test_last_reply_json() : "(null)");
+  } else {
+    ok("app.getPlatform");
+  }
+
   nv_arena_destroy(arena);
   nv_window_free(win);
 }
-#endif
 
 int main(void){
   printf("=== nativeview App Ops Tests ===\n\n");
   test_handshake_match_and_mismatch();
-#if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
   test_app_paths_and_locale();
-#endif
   printf("\n=== Summary ===\n");
   printf("Passed: %d/%d\n", tests_passed, tests_passed + tests_failed);
   return (tests_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

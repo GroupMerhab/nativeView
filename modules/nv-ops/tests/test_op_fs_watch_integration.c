@@ -11,10 +11,14 @@
 #if defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
 #include <unistd.h>
+NV_INTERNAL int nv_mac_fs_watch_start(long long id, const char* path, nv_window_t* w);
+NV_INTERNAL void nv_mac_fs_watch_stop(long long id);
 #elif defined(__linux__) && !defined(__APPLE__)
 #include <gtk/gtk.h>
 #include <time.h>
 #include <unistd.h>
+NV_INTERNAL int nv_linux_fs_watch_start(long long id, const char* path, nv_window_t* w);
+NV_INTERNAL void nv_linux_fs_watch_stop(long long id);
 #endif
 
 static char* g_last_event = NULL;

@@ -1,4 +1,5 @@
 #include "nv_op_notification.h"
+#include "nv_core_internal.h"
 #include "nv_window_internal.h"
 #include "nv_arena.h"
 #include "nv_json.h"
@@ -9,40 +10,7 @@
 
 #include "test_helpers.h"
 
-#if defined(__APPLE__)
-/* Strong mocks override weak nv_mac_notification_* from nv-platform-mac.a */
-int nv_mac_notification_show(long long id, const char* title, const char* body, const char* icon_path,
-                             nv_window_t* w) {
-  (void)id;
-  (void)title;
-  (void)body;
-  (void)icon_path;
-  (void)w;
-  return 0;
-}
-
-int nv_mac_notification_close(long long id) {
-  (void)id;
-  return 0;
-}
-#endif
-
-#if defined(__linux__) && !defined(__APPLE__)
-int nv_linux_notification_show(long long id, const char *title, const char *body, const char *icon_path,
-                               nv_window_t *w) {
-  (void)id;
-  (void)title;
-  (void)body;
-  (void)icon_path;
-  (void)w;
-  return 0;
-}
-
-int nv_linux_notification_close(long long id) {
-  (void)id;
-  return 0;
-}
-#endif
+enum { NV_RC_NOT_SUPPORTED = -100 };
 
 static int g_nv_send_count = 0;
 
@@ -67,8 +35,7 @@ static void fail(const char* name, const char* why) {
   tests_failed++;
 }
 
-#if !defined(__APPLE__) && !defined(_WIN32) && !(defined(__linux__) && !defined(__APPLE__))
-static void expect_err_not_implemented(const char* name) {
+static void expect_err_not_supported(const char* name) {
   if (test_last_reply_ok()) {
     fail(name, "expected error reply");
     return;
@@ -77,17 +44,70 @@ static void expect_err_not_implemented(const char* name) {
     fail(name, "expected JSON with \"error\" key");
     return;
   }
-  if (!test_last_reply_error_code() || strcmp(test_last_reply_error_code(), "ERR_NOT_IMPLEMENTED") != 0) {
-    fail(name, "expected ERR_NOT_IMPLEMENTED");
+  if (!test_last_reply_error_code() || strcmp(test_last_reply_error_code(), "ERR_NOT_SUPPORTED") != 0) {
+    fail(name, "expected ERR_NOT_SUPPORTED");
     return;
   }
   ok(name);
 }
-#endif
 
-static nv_window_t* make_window(void) {
+static void expect_err_permission(const char* name) {
+  if (test_last_reply_ok()) {
+    fail(name, "expected error reply");
+    return;
+  }
+  if (!test_last_reply_json_has_error_key()) {
+    fail(name, "expected JSON with \"error\" key");
+    return;
+  }
+  if (!test_last_reply_error_code() || strcmp(test_last_reply_error_code(), "ERR_PERMISSION") != 0) {
+    fail(name, "expected ERR_PERMISSION");
+    return;
+  }
+  ok(name);
+}
+
+static void expect_err_io(const char* name) {
+  if (test_last_reply_ok()) {
+    fail(name, "expected error reply");
+    return;
+  }
+  if (!test_last_reply_json_has_error_key()) {
+    fail(name, "expected JSON with \"error\" key");
+    return;
+  }
+  if (!test_last_reply_error_code() || strcmp(test_last_reply_error_code(), "ERR_IO") != 0) {
+    fail(name, "expected ERR_IO");
+    return;
+  }
+  ok(name);
+}
+
+static int g_show_called = 0;
+static int g_close_called = 0;
+static int g_show_rc = 0;
+static int g_close_rc = 0;
+
+static int test_notification_show(long long id, const char* title, const char* body,
+                                  const char* icon_path, nv_window_t* w) {
+  (void)id;
+  (void)title;
+  (void)body;
+  (void)icon_path;
+  (void)w;
+  g_show_called++;
+  return g_show_rc;
+}
+
+static int test_notification_close(long long id) {
+  (void)id;
+  g_close_called++;
+  return g_close_rc;
+}
+
+static nv_window_t* make_window(nv_app_t* app) {
   nv_window_cfg_t cfg = {"NotifTest", 640, 480, 0, 0, 1, 0, 0, 0, 0};
-  return nv_window_alloc(NULL, &cfg);
+  return nv_window_alloc(app, &cfg);
 }
 
 static nv_json_val_t* parse(nv_arena_t* arena, const char* s) {
@@ -95,7 +115,12 @@ static nv_json_val_t* parse(nv_arena_t* arena, const char* s) {
 }
 
 static void test_notification_ops(void) {
-  nv_window_t* win = make_window();
+  nv_app_t app;
+  memset(&app, 0, sizeof app);
+  app.platform_api.notification_show = test_notification_show;
+  app.platform_api.notification_close = test_notification_close;
+
+  nv_window_t* win = make_window(&app);
   if (!win) {
     fail("make_window", "alloc failed");
     return;
@@ -107,10 +132,11 @@ static void test_notification_ops(void) {
     return;
   }
 
-#if defined(__APPLE__) || defined(_WIN32) || (defined(__linux__) && !defined(__APPLE__))
   test_reset_replies();
   reset_send_mocks();
   nv_arena_reset(arena);
+  g_show_called = 0;
+  g_show_rc = 0;
   nv_op_notification_show(win, 1, parse(arena, "{\"id\":1,\"title\":\"Hi\",\"body\":\"Msg\"}"), arena);
   if (!test_last_reply_ok()) {
     fail("show ok", test_last_reply_json() ? test_last_reply_json() : "(null)");
@@ -120,6 +146,8 @@ static void test_notification_ops(void) {
       fail("show reply shape", js ? js : "(null)");
     } else if (g_nv_send_count != 0) {
       fail("show no push", "nv_send should not fire for notification.show");
+    } else if (g_show_called != 1) {
+      fail("show called", "expected one call");
     } else {
       ok("show ok and empty result");
     }
@@ -128,6 +156,8 @@ static void test_notification_ops(void) {
   test_reset_replies();
   reset_send_mocks();
   nv_arena_reset(arena);
+  g_close_called = 0;
+  g_close_rc = 0;
   nv_op_notification_close(win, 2, parse(arena, "{\"id\":1}"), arena);
   if (!test_last_reply_ok()) {
     fail("close ok", test_last_reply_json() ? test_last_reply_json() : "(null)");
@@ -137,21 +167,77 @@ static void test_notification_ops(void) {
       fail("close reply shape", js ? js : "(null)");
     } else if (g_nv_send_count != 0) {
       fail("close no push", "nv_send should not fire for notification.close");
+    } else if (g_close_called != 1) {
+      fail("close called", "expected one call");
     } else {
       ok("close ok and empty result");
     }
   }
-#else
-  test_reset_replies();
-  nv_arena_reset(arena);
-  nv_op_notification_show(win, 1, NULL, arena);
-  expect_err_not_implemented("show");
 
   test_reset_replies();
+  reset_send_mocks();
   nv_arena_reset(arena);
-  nv_op_notification_close(win, 2, parse(arena, "{\"id\":1}"), arena);
-  expect_err_not_implemented("close");
-#endif
+  g_show_called = 0;
+  g_show_rc = NV_RC_NOT_SUPPORTED;
+  nv_op_notification_show(win, 10, parse(arena, "{\"id\":1,\"title\":\"Hi\",\"body\":\"Msg\"}"), arena);
+  expect_err_not_supported("show not supported");
+  if (g_show_called != 1) fail("show not supported called", "expected one call");
+
+  test_reset_replies();
+  reset_send_mocks();
+  nv_arena_reset(arena);
+  g_show_called = 0;
+  g_show_rc = -1;
+  nv_op_notification_show(win, 11, parse(arena, "{\"id\":1,\"title\":\"Hi\",\"body\":\"Msg\"}"), arena);
+  expect_err_permission("show permission");
+  if (g_show_called != 1) fail("show permission called", "expected one call");
+
+  test_reset_replies();
+  reset_send_mocks();
+  nv_arena_reset(arena);
+  g_show_called = 0;
+  g_show_rc = -2;
+  nv_op_notification_show(win, 12, parse(arena, "{\"id\":1,\"title\":\"Hi\",\"body\":\"Msg\"}"), arena);
+  expect_err_io("show io");
+  if (g_show_called != 1) fail("show io called", "expected one call");
+
+  test_reset_replies();
+  reset_send_mocks();
+  nv_arena_reset(arena);
+  g_close_called = 0;
+  g_close_rc = NV_RC_NOT_SUPPORTED;
+  nv_op_notification_close(win, 13, parse(arena, "{\"id\":1}"), arena);
+  expect_err_not_supported("close not supported");
+  if (g_close_called != 1) fail("close not supported called", "expected one call");
+
+  test_reset_replies();
+  reset_send_mocks();
+  nv_arena_reset(arena);
+  g_close_called = 0;
+  g_close_rc = -2;
+  nv_op_notification_close(win, 14, parse(arena, "{\"id\":1}"), arena);
+  expect_err_io("close io");
+  if (g_close_called != 1) fail("close io called", "expected one call");
+
+  test_reset_replies();
+  reset_send_mocks();
+  nv_arena_reset(arena);
+  g_show_called = 0;
+  app.platform_api.notification_show = NULL;
+  nv_op_notification_show(win, 15, parse(arena, "{\"id\":1,\"title\":\"Hi\",\"body\":\"Msg\"}"), arena);
+  expect_err_not_supported("show missing vtable");
+  if (g_show_called != 0) fail("show missing vtable called", "unexpected call");
+  app.platform_api.notification_show = test_notification_show;
+
+  test_reset_replies();
+  reset_send_mocks();
+  nv_arena_reset(arena);
+  g_close_called = 0;
+  app.platform_api.notification_close = NULL;
+  nv_op_notification_close(win, 16, parse(arena, "{\"id\":1}"), arena);
+  expect_err_not_supported("close missing vtable");
+  if (g_close_called != 0) fail("close missing vtable called", "unexpected call");
+  app.platform_api.notification_close = test_notification_close;
 
   test_reset_replies();
   nv_arena_reset(arena);
@@ -171,9 +257,6 @@ static void test_notification_ops(void) {
 }
 
 int main(void) {
-#if defined(_WIN32)
-  (void)_putenv("NATIVEVIEW_STUB_NOTIFICATION=1");
-#endif
   printf("=== nativeview Notification Ops Tests ===\n\n");
   test_notification_ops();
   printf("\n=== Summary ===\n");

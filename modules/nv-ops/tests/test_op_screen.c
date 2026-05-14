@@ -3,6 +3,7 @@
  * =============================================================================
  */
 #include "nv_op_screen.h"
+#include "nv_core_internal.h"
 #include "nv_window_internal.h"
 #include "nv_arena.h"
 #include "nv_json.h"
@@ -12,7 +13,7 @@
 
 #include "test_helpers.h"
 
-char* nv_screen_test_hook_get_all(void) {
+static char* test_screen_get_all(void) {
   return strdup(
       "[{\"id\":7,\"x\":10,\"y\":20,\"width\":800,\"height\":600,\"scaleFactor\":2,"
       "\"localizedName\":\"MockDisplay\",\"isPrimary\":true,"
@@ -20,7 +21,7 @@ char* nv_screen_test_hook_get_all(void) {
       "\"workArea\":{\"x\":10,\"y\":40,\"width\":800,\"height\":560}}]");
 }
 
-char* nv_screen_test_hook_get_primary(void) {
+static char* test_screen_get_primary(void) {
   return strdup(
       "{\"id\":0,\"x\":0,\"y\":0,\"width\":1920,\"height\":1080,\"scaleFactor\":1.5,"
       "\"localizedName\":\"PrimaryMock\",\"isPrimary\":true,"
@@ -28,7 +29,7 @@ char* nv_screen_test_hook_get_primary(void) {
       "\"workArea\":{\"x\":0,\"y\":25,\"width\":1920,\"height\":1055}}");
 }
 
-char* nv_screen_test_hook_get_cursor(void) { return strdup("{\"x\":101,\"y\":202}"); }
+static char* test_screen_get_cursor(void) { return strdup("{\"x\":101,\"y\":202}"); }
 
 static int tests_passed = 0, tests_failed = 0;
 static void ok(const char* name) {
@@ -40,9 +41,9 @@ static void fail(const char* name, const char* why) {
   tests_failed++;
 }
 
-static nv_window_t* make_window(void) {
+static nv_window_t* make_window(nv_app_t* app) {
   nv_window_cfg_t cfg = {"ScreenTest", 640, 480, 0, 0, 1, 0, 0, 0, 0};
-  return nv_window_alloc(NULL, &cfg);
+  return nv_window_alloc(app, &cfg);
 }
 
 static nv_json_val_t* parse(nv_arena_t* arena, const char* s) {
@@ -50,7 +51,13 @@ static nv_json_val_t* parse(nv_arena_t* arena, const char* s) {
 }
 
 static void test_screen_mock_replies(void) {
-  nv_window_t* win = make_window();
+  nv_app_t app;
+  memset(&app, 0, sizeof app);
+  app.platform_api.screen_get_all = test_screen_get_all;
+  app.platform_api.screen_get_primary = test_screen_get_primary;
+  app.platform_api.screen_get_cursor = test_screen_get_cursor;
+
+  nv_window_t* win = make_window(&app);
   if (!win) {
     fail("make_window", "alloc failed");
     return;

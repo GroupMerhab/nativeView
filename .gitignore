@@ -1,5 +1,8 @@
 # --- macOS ---
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon?
 
 # --- Node ---
 node_modules/
@@ -7,21 +10,54 @@ npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+.direnv/
+.envrc
+.npmrc
+.pypirc
+.netrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.mobileprovision
+
 # --- Python ---
 __pycache__/
 *.py[cod]
 *.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# --- Pascal / Delphi ---
+*.ppu
+*.lps
+*.dcu
+*.or
+*.rst
 
 # --- Editors / IDEs ---
 .vscode/
 .idea/
+.vs/
 *.swp
 *.swo
+*.iml
 
 # --- Temporary ---
 *.tmp
 *.bak
 *.log
+*.orig
+*.rej
 
 # --- C/C++ build ---
 *.o
@@ -34,6 +70,15 @@ __pycache__/
 *.exe
 *.out
 *.dSYM
+*.d
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.ipdb
+*.iobj
+*.pch
+*.rsp
 
 # --- CMake ---
 CMakeCache.txt
@@ -45,11 +90,16 @@ Testing/
 DartConfiguration.tcl
 compile_commands.json
 install_manifest.txt
+CMakeUserPresets.json
+*.ninja
+.ninja_deps
+.ninja_log
 
 # --- Build dirs ---
 build/
 build_fresh/
 build_test/
+**/build/
 # CMake / local out-of-tree dirs (not matched by `build/` alone)
 build-*/
 cmake-build-*/
@@ -58,13 +108,24 @@ lib/
 bin/
 
 # --- Android / Gradle ---
-.gradle/
+**/.gradle/
 local.properties
-.cxx/
+**/.cxx/
+**/.externalNativeBuild/
 *.apk
 *.aab
 *.ap_
 *.dex
+
+**/DerivedData/
+**/*.xcuserstate
+**/*.moved-aside
+**/*.xccheckout
+**/*.xcscmblueprint
+**/xcuserdata/
+
+examples/ios_runner/_xcode/
+examples/android_runner/_cmake_smoke/
 
 # --- JS build ---
 js/dist/
@@ -75,7 +136,16 @@ coverage/
 *.lcov
 *.gcda
 *.gcno
+*.gcov
+*.profraw
+*.profdata
 
 # --- Demo assets (optional: uncomment if generated) ---
 # demo/assets/*.png
 # demo/assets/test_file.txt
+
+# --- Windows ---
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.stackdump

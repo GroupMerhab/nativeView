@@ -81,6 +81,39 @@ static void test_get_stats(void) {
   nv_arena_destroy(a);
 }
 
+static void test_route_table_full(void) {
+  nv_arena_t* a = nv_arena_create(65536);
+  if (!a) {
+    fail("route_table_full", "arena");
+    return;
+  }
+  HttpCore* c = http_core_create(a, 5050, 5);
+  if (!c) {
+    fail("route_table_full", "core create");
+    nv_arena_destroy(a);
+    return;
+  }
+  char path[64];
+  for (int i = 0; i < HTTP_CORE_MAX_ROUTES; i++) {
+    (void)snprintf(path, sizeof(path), "/r%d", i);
+    int r = http_core_register_route(c, "GET", path, dummy_handler, NULL);
+    if (r != HTTP_OK) {
+      fail("route_table_full", "expected HTTP_OK before cap");
+      http_core_free(&c);
+      nv_arena_destroy(a);
+      return;
+    }
+  }
+  int r = http_core_register_route(c, "GET", "/overflow", dummy_handler, NULL);
+  if (r != HTTP_ERROR_INVALID)
+    fail("route_table_full", "expected HTTP_ERROR_INVALID when table full");
+  else
+    ok("route_table_full");
+
+  http_core_free(&c);
+  nv_arena_destroy(a);
+}
+
 static void test_null_safety(void) {
   http_core_free(NULL);
   {
@@ -106,6 +139,7 @@ int main(void) {
   test_register_route();
   test_set_default();
   test_get_stats();
+  test_route_table_full();
   test_null_safety();
 
   printf("==============\n");

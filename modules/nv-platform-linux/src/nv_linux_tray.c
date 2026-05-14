@@ -205,7 +205,7 @@ NV_INTERNAL NV_LINUX_TRAY_ATTR int nv_linux_tray_create(long long tray_id, const
                                                         const char *tooltip, nv_window_t *w) {
 #ifndef NV_HAS_APPINDICATOR
   if (!nv_linux_tray_status_icon_usable()) {
-    return NV_TRAY_RC_NOT_SUPPORTED;
+    return NV_PLATFORM_RC_NOT_SUPPORTED;
   }
 #endif
 

@@ -1,79 +1,28 @@
 #include "nv_op_screen.h"
 #include "nv.h"
+#include "nv_core_internal.h"
+#include "nv_window_internal.h"
 #include <stdlib.h>
 
 NV_INTERNAL void nv_ipc_reply_ok(nv_window_t* w, int seq, nv_json_t* result, nv_arena_t* arena);
 NV_INTERNAL void nv_ipc_reply_err(nv_window_t* w, int seq, const char* code, const char* message, nv_arena_t* arena);
 
-#ifdef __APPLE__
-NV_INTERNAL char* nv_mac_screen_get_all(void);
-NV_INTERNAL char* nv_mac_screen_get_primary(void);
-NV_INTERNAL char* nv_mac_screen_get_cursor(void);
-#endif
-#if defined(_WIN32)
-NV_INTERNAL char* nv_win_screen_get_all(void);
-NV_INTERNAL char* nv_win_screen_get_primary(void);
-NV_INTERNAL char* nv_win_screen_get_cursor(void);
-#endif
-#if defined(__linux__) && !defined(__APPLE__)
-NV_INTERNAL char* nv_linux_screen_get_all(void);
-NV_INTERNAL char* nv_linux_screen_get_primary(void);
-NV_INTERNAL char* nv_linux_screen_get_cursor(void);
-#endif
-
-/* Unit tests may provide strong definitions to supply JSON without hitting the OS. */
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
-__attribute__((weak)) char* nv_screen_test_hook_get_all(void) { return NULL; }
-__attribute__((weak)) char* nv_screen_test_hook_get_primary(void) { return NULL; }
-__attribute__((weak)) char* nv_screen_test_hook_get_cursor(void) { return NULL; }
-#endif
-
-static char* screen_fetch_all(void) {
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
-  char* t = nv_screen_test_hook_get_all();
-  if (t) return t;
-#endif
-#ifdef __APPLE__
-  return nv_mac_screen_get_all();
-#elif defined(_WIN32)
-  return nv_win_screen_get_all();
-#elif defined(__linux__) && !defined(__APPLE__)
-  return nv_linux_screen_get_all();
-#else
-  return NULL;
-#endif
+static char* screen_fetch_all(nv_window_t* w) {
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->screen_get_all) return NULL;
+  return api->screen_get_all();
 }
 
-static char* screen_fetch_primary(void) {
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
-  char* t = nv_screen_test_hook_get_primary();
-  if (t) return t;
-#endif
-#ifdef __APPLE__
-  return nv_mac_screen_get_primary();
-#elif defined(_WIN32)
-  return nv_win_screen_get_primary();
-#elif defined(__linux__) && !defined(__APPLE__)
-  return nv_linux_screen_get_primary();
-#else
-  return NULL;
-#endif
+static char* screen_fetch_primary(nv_window_t* w) {
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->screen_get_primary) return NULL;
+  return api->screen_get_primary();
 }
 
-static char* screen_fetch_cursor(void) {
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
-  char* t = nv_screen_test_hook_get_cursor();
-  if (t) return t;
-#endif
-#ifdef __APPLE__
-  return nv_mac_screen_get_cursor();
-#elif defined(_WIN32)
-  return nv_win_screen_get_cursor();
-#elif defined(__linux__) && !defined(__APPLE__)
-  return nv_linux_screen_get_cursor();
-#else
-  return NULL;
-#endif
+static char* screen_fetch_cursor(nv_window_t* w) {
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->screen_get_cursor) return NULL;
+  return api->screen_get_cursor();
 }
 
 static nv_json_t* nv_screen_rect_builder(nv_arena_t* a, const nv_json_val_t* r) {
@@ -191,7 +140,7 @@ static void screen_reply_from_heap(nv_window_t* w, int seq, char* heap, int mode
 
 NV_INTERNAL void nv_op_screen_get_all(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
-  char* heap = screen_fetch_all();
+  char* heap = screen_fetch_all(w);
   if (!heap) {
     nv_ipc_reply_err(w, seq, "ERR_NOT_IMPLEMENTED", "screen.getAll not implemented on this platform", arena);
     return;
@@ -201,7 +150,7 @@ NV_INTERNAL void nv_op_screen_get_all(nv_window_t* w, int seq, const nv_json_val
 
 NV_INTERNAL void nv_op_screen_get_primary(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
-  char* heap = screen_fetch_primary();
+  char* heap = screen_fetch_primary(w);
   if (!heap) {
     nv_ipc_reply_err(w, seq, "ERR_NOT_IMPLEMENTED", "screen.getPrimary not implemented on this platform", arena);
     return;
@@ -211,7 +160,7 @@ NV_INTERNAL void nv_op_screen_get_primary(nv_window_t* w, int seq, const nv_json
 
 NV_INTERNAL void nv_op_screen_get_cursor(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
-  char* heap = screen_fetch_cursor();
+  char* heap = screen_fetch_cursor(w);
   if (!heap) {
     nv_ipc_reply_err(w, seq, "ERR_NOT_IMPLEMENTED", "screen.getCursorPos not implemented on this platform", arena);
     return;

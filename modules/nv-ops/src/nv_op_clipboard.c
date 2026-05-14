@@ -1,40 +1,13 @@
 #include "nv_op_clipboard.h"
 #include "nv_base64.h"
 #include "nv.h"
+#include "nv_core_internal.h"
+#include "nv_window_internal.h"
 #include <stdlib.h>
 #include <string.h>
 
 NV_INTERNAL void nv_ipc_reply_ok(nv_window_t* w, int seq, nv_json_t* result, nv_arena_t* arena);
 NV_INTERNAL void nv_ipc_reply_err(nv_window_t* w, int seq, const char* code, const char* message, nv_arena_t* arena);
-
-/* macOS platform hooks (implemented in nv_mac.m) */
-NV_INTERNAL char* nv_mac_clipboard_read_text(void);
-NV_INTERNAL int   nv_mac_clipboard_write_text(const char* text);
-NV_INTERNAL void  nv_mac_clipboard_clear(void);
-NV_INTERNAL int   nv_mac_clipboard_has_text(void);
-NV_INTERNAL char* nv_mac_clipboard_read_image(int* out_w, int* out_h);
-NV_INTERNAL int   nv_mac_clipboard_write_image(const char* base64_png);
-NV_INTERNAL int   nv_mac_clipboard_has_image(void);
-
-/* Windows platform hooks (implemented in nv_win.c / nv_win_clipboard_image.cpp) */
-#if defined(_WIN32)
-NV_INTERNAL char* nv_win_clipboard_read_text(void);
-NV_INTERNAL int   nv_win_clipboard_write_text(const char* utf8);
-NV_INTERNAL void  nv_win_clipboard_clear(void);
-NV_INTERNAL int   nv_win_clipboard_has_text(void);
-NV_INTERNAL char* nv_win_clipboard_read_image(int* out_w, int* out_h);
-NV_INTERNAL int   nv_win_clipboard_write_image(const char* base64_png);
-NV_INTERNAL int   nv_win_clipboard_has_image(void);
-#endif
-#if defined(__linux__) && !defined(__APPLE__)
-NV_INTERNAL char* nv_linux_clipboard_read_text(void);
-NV_INTERNAL int   nv_linux_clipboard_write_text(const char* utf8);
-NV_INTERNAL void  nv_linux_clipboard_clear(void);
-NV_INTERNAL int   nv_linux_clipboard_has_text(void);
-NV_INTERNAL char* nv_linux_clipboard_read_image(int* out_w, int* out_h);
-NV_INTERNAL int   nv_linux_clipboard_write_image(const char* base64_png);
-NV_INTERNAL int   nv_linux_clipboard_has_image(void);
-#endif
 
 static int nv_clipboard_png_ihdr_dims(const uint8_t* p, size_t n, int* w, int* h) {
   static const uint8_t sig[8] = {137u, 80u, 78u, 71u, 13u, 10u, 26u, 10u};
@@ -53,14 +26,13 @@ static int nv_clipboard_png_ihdr_dims(const uint8_t* p, size_t n, int* w, int* h
 
 NV_INTERNAL void nv_op_clipboard_read_text(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->clipboard_read_text) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "clipboard.readText not supported", arena);
+    return;
+  }
   char* heap = NULL;
-#ifdef __APPLE__
-  heap = nv_mac_clipboard_read_text();
-#elif defined(_WIN32)
-  heap = nv_win_clipboard_read_text();
-#elif defined(__linux__) && !defined(__APPLE__)
-  heap = nv_linux_clipboard_read_text();
-#endif
+  heap = api->clipboard_read_text();
   const char* text = heap ? heap : "";
   nv_json_t* obj = nv_json_object(arena);
   nv_json_str(obj, "text", text);
@@ -71,29 +43,27 @@ NV_INTERNAL void nv_op_clipboard_read_text(nv_window_t* w, int seq, const nv_jso
 NV_INTERNAL void nv_op_clipboard_write_text(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   const char* text = args ? nv_json_get_str(args, "text") : NULL;
   if (!text) { nv_ipc_reply_err(w, seq, "ERR_INVALID_ARG", "missing 'text'", arena); return; }
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->clipboard_write_text) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "clipboard.writeText not supported", arena);
+    return;
+  }
   int rc = 0;
-#ifdef __APPLE__
-  rc = nv_mac_clipboard_write_text(text);
-#elif defined(_WIN32)
-  rc = nv_win_clipboard_write_text(text);
-#elif defined(__linux__) && !defined(__APPLE__)
-  rc = nv_linux_clipboard_write_text(text);
-#endif
+  rc = api->clipboard_write_text(text);
   if (rc != 0) { nv_ipc_reply_err(w, seq, "ERR_IO", "clipboard write failed", arena); return; }
   nv_ipc_reply_ok(w, seq, nv_json_object(arena), arena);
 }
 
 NV_INTERNAL void nv_op_clipboard_read_image(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->clipboard_read_image) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "clipboard.readImage not supported", arena);
+    return;
+  }
   int iw = 0, ih = 0;
   char* b64 = NULL;
-#ifdef __APPLE__
-  b64 = nv_mac_clipboard_read_image(&iw, &ih);
-#elif defined(_WIN32)
-  b64 = nv_win_clipboard_read_image(&iw, &ih);
-#elif defined(__linux__) && !defined(__APPLE__)
-  b64 = nv_linux_clipboard_read_image(&iw, &ih);
-#endif
+  b64 = api->clipboard_read_image(&iw, &ih);
   if (!b64 || !b64[0]) {
     if (b64) free(b64);
     nv_ipc_reply_err(w, seq, "ERR_IO", "clipboard has no PNG image", arena);
@@ -142,13 +112,12 @@ NV_INTERNAL void nv_op_clipboard_write_image(nv_window_t* w, int seq, const nv_j
   }
   {
     int rc = -1;
-#ifdef __APPLE__
-    rc = nv_mac_clipboard_write_image(data);
-#elif defined(_WIN32)
-    rc = nv_win_clipboard_write_image(data);
-#elif defined(__linux__) && !defined(__APPLE__)
-    rc = nv_linux_clipboard_write_image(data);
-#endif
+    const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+    if (!api || !api->clipboard_write_image) {
+      nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "clipboard.writeImage not supported", arena);
+      return;
+    }
+    rc = api->clipboard_write_image(data);
     if (rc != 0) { nv_ipc_reply_err(w, seq, "ERR_IO", "clipboard image write failed", arena); return; }
   }
   nv_ipc_reply_ok(w, seq, nv_json_object(arena), arena);
@@ -156,26 +125,23 @@ NV_INTERNAL void nv_op_clipboard_write_image(nv_window_t* w, int seq, const nv_j
 
 NV_INTERNAL void nv_op_clipboard_clear(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
-#ifdef __APPLE__
-  nv_mac_clipboard_clear();
-#elif defined(_WIN32)
-  nv_win_clipboard_clear();
-#elif defined(__linux__) && !defined(__APPLE__)
-  nv_linux_clipboard_clear();
-#endif
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->clipboard_clear) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "clipboard.clear not supported", arena);
+    return;
+  }
+  api->clipboard_clear();
   nv_ipc_reply_ok(w, seq, nv_json_object(arena), arena);
 }
 
 NV_INTERNAL void nv_op_clipboard_has_text(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
-  int has = 0;
-#ifdef __APPLE__
-  has = nv_mac_clipboard_has_text();
-#elif defined(_WIN32)
-  has = nv_win_clipboard_has_text();
-#elif defined(__linux__) && !defined(__APPLE__)
-  has = nv_linux_clipboard_has_text();
-#endif
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->clipboard_has_text) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "clipboard.hasText not supported", arena);
+    return;
+  }
+  int has = api->clipboard_has_text();
   nv_json_t* obj = nv_json_object(arena);
   nv_json_bool(obj, "value", has ? 1 : 0);
   nv_ipc_reply_ok(w, seq, obj, arena);
@@ -183,14 +149,12 @@ NV_INTERNAL void nv_op_clipboard_has_text(nv_window_t* w, int seq, const nv_json
 
 NV_INTERNAL void nv_op_clipboard_has_image(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
   (void)args;
-  int has = 0;
-#ifdef __APPLE__
-  has = nv_mac_clipboard_has_image();
-#elif defined(_WIN32)
-  has = nv_win_clipboard_has_image();
-#elif defined(__linux__) && !defined(__APPLE__)
-  has = nv_linux_clipboard_has_image();
-#endif
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
+  if (!api || !api->clipboard_has_image) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "clipboard.hasImage not supported", arena);
+    return;
+  }
+  int has = api->clipboard_has_image();
   nv_json_t* obj = nv_json_object(arena);
   nv_json_bool(obj, "value", has ? 1 : 0);
   nv_ipc_reply_ok(w, seq, obj, arena);

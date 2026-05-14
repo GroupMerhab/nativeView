@@ -7,6 +7,7 @@
 #include "nv_hotkey.h"
 #include "nv.h"
 #include "nv_arena.h"
+#include "nv_core_internal.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdatomic.h>
@@ -58,13 +59,22 @@ static void hotkey_remove_at(nv_window_t* w, int idx) {
   w->hotkey_slot_count--;
 }
 
+static nv_platform_api_t* nv_hotkey_platform_api(nv_window_t* w) {
+  if (!w || !w->app) return NULL;
+  return &w->app->platform_api;
+}
+
 NV_INTERNAL void nv_hotkey_detach_for_window(nv_window_t* w) {
   if (!w || !w->hotkey_slots || w->hotkey_slot_count <= 0) return;
+  nv_platform_api_t* api = nv_hotkey_platform_api(w);
+  if (!api || !api->hotkey_unregister) {
+    w->hotkey_slot_count = 0;
+    w->hotkey_slots = NULL;
+    return;
+  }
   for (int i = 0; i < w->hotkey_slot_count; i++) {
     long long h = w->hotkey_slots[i].handle;
-    nv_mac_unregister_hotkey(h);
-    nv_win_unregister_hotkey(h);
-    nv_linux_unregister_hotkey(h);
+    api->hotkey_unregister(h);
   }
   w->hotkey_slot_count = 0;
   w->hotkey_slots = NULL;
@@ -77,6 +87,11 @@ NV_API int nv_window_register_hotkey(nv_window_t* w, const char* id, const char*
 
   nv_hotkey_combo_t parsed;
   if (nv_hotkey_parse_combo(combo, &parsed) != 0) return NV_HOTKEY_ERR_INVALID;
+
+  nv_platform_api_t* api = nv_hotkey_platform_api(w);
+  if (!api || !api->hotkey_register || !api->hotkey_unregister) {
+    return NV_HOTKEY_ERR_NOT_SUPPORTED;
+  }
 
   nv_arena_t* ar = nv_window_get_arena(w);
   if (!ar) return NV_HOTKEY_ERR_INVALID;
@@ -91,12 +106,9 @@ NV_API int nv_window_register_hotkey(nv_window_t* w, const char* id, const char*
   ctx->window = w;
   ctx->id = id_copy;
 
-  int rm = nv_mac_register_hotkey(w, handle, &parsed, nv_hotkey_on_fired, ctx);
-  int rw = nv_win_register_hotkey(w, handle, &parsed, nv_hotkey_on_fired, ctx);
-  int rl = nv_linux_register_hotkey(w, handle, &parsed, nv_hotkey_on_fired, ctx);
-  if (rm != 0 && rw != 0 && rl != 0) {
-    if (rm == NV_HOTKEY_RC_NOT_SUPPORTED || rw == NV_HOTKEY_RC_NOT_SUPPORTED ||
-        rl == NV_HOTKEY_RC_NOT_SUPPORTED) {
+  int r = api->hotkey_register(w, handle, &parsed, nv_hotkey_on_fired, ctx);
+  if (r != 0) {
+    if (r == NV_HOTKEY_RC_NOT_SUPPORTED) {
       return NV_HOTKEY_ERR_NOT_SUPPORTED;
     }
     return NV_HOTKEY_ERR_PLATFORM;
@@ -106,9 +118,7 @@ NV_API int nv_window_register_hotkey(nv_window_t* w, const char* id, const char*
   nv_hotkey_slot_t* grown =
       (nv_hotkey_slot_t*)nv_arena_alloc(ar, (size_t)(n + 1) * sizeof(nv_hotkey_slot_t));
   if (!grown) {
-    nv_mac_unregister_hotkey(handle);
-    nv_win_unregister_hotkey(handle);
-    nv_linux_unregister_hotkey(handle);
+    api->hotkey_unregister(handle);
     return NV_HOTKEY_ERR_PLATFORM;
   }
   if (w->hotkey_slots && n > 0) {
@@ -126,8 +136,9 @@ NV_API void nv_window_unregister_hotkey(nv_window_t* w, const char* id) {
   int idx = find_hotkey_index(w, id);
   if (idx < 0) return;
   long long h = w->hotkey_slots[idx].handle;
-  nv_mac_unregister_hotkey(h);
-  nv_win_unregister_hotkey(h);
-  nv_linux_unregister_hotkey(h);
+  nv_platform_api_t* api = nv_hotkey_platform_api(w);
+  if (api && api->hotkey_unregister) {
+    api->hotkey_unregister(h);
+  }
   hotkey_remove_at(w, idx);
 }

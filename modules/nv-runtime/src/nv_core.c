@@ -214,6 +214,7 @@ NV_INTERNAL nv_app_t* nv_app_alloc(void) {
 
   app->platform = NULL;
   app->running = 0;
+  memset(&app->platform_api, 0, sizeof app->platform_api);
   return app;
 }
 

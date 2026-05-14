@@ -5,6 +5,7 @@
  */
 
 #include "nv_op_fs.h"
+#include "nv_core_internal.h"
 #include "nv_window_internal.h"
 #include "nv_arena.h"
 #include "nv_json.h"
@@ -13,71 +14,6 @@
 #include <stdlib.h>
 
 #include "test_helpers.h"
-
-#if defined(__APPLE__) && (defined(__GNUC__) || defined(__clang__))
-static long long g_mac_last_start_id = -1;
-static char g_mac_last_start_path[512];
-static int g_mac_start_calls = 0;
-static int g_mac_stop_calls = 0;
-int nv_mac_fs_watch_start(long long id, const char* path, nv_window_t* w) {
-  (void)w;
-  g_mac_start_calls++;
-  g_mac_last_start_id = id;
-  if (path) {
-    strncpy(g_mac_last_start_path, path, sizeof(g_mac_last_start_path) - 1);
-    g_mac_last_start_path[sizeof(g_mac_last_start_path) - 1] = '\0';
-  } else {
-    g_mac_last_start_path[0] = '\0';
-  }
-  return 0;
-}
-void nv_mac_fs_watch_stop(long long id) {
-  (void)id;
-  g_mac_stop_calls++;
-}
-#elif (defined(__GNUC__) || defined(__clang__)) && defined(__linux__) && !defined(__APPLE__)
-static long long g_linux_last_start_id = -1;
-static char g_linux_last_start_path[512];
-static int g_linux_start_calls = 0;
-static int g_linux_stop_calls = 0;
-int nv_linux_fs_watch_start(long long id, const char* path, nv_window_t* w) {
-  (void)w;
-  g_linux_start_calls++;
-  g_linux_last_start_id = id;
-  if (path) {
-    strncpy(g_linux_last_start_path, path, sizeof(g_linux_last_start_path) - 1);
-    g_linux_last_start_path[sizeof(g_linux_last_start_path) - 1] = '\0';
-  } else {
-    g_linux_last_start_path[0] = '\0';
-  }
-  return 0;
-}
-void nv_linux_fs_watch_stop(long long id) {
-  (void)id;
-  g_linux_stop_calls++;
-}
-#elif defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))
-static long long g_win_last_start_id = -1;
-static char g_win_last_start_path[512];
-static int g_win_start_calls = 0;
-static int g_win_stop_calls = 0;
-int nv_win_fs_watch_start(long long id, const char* path, nv_window_t* w) {
-  (void)w;
-  g_win_start_calls++;
-  g_win_last_start_id = id;
-  if (path) {
-    strncpy(g_win_last_start_path, path, sizeof(g_win_last_start_path) - 1);
-    g_win_last_start_path[sizeof(g_win_last_start_path) - 1] = '\0';
-  } else {
-    g_win_last_start_path[0] = '\0';
-  }
-  return 0;
-}
-void nv_win_fs_watch_stop(long long id) {
-  (void)id;
-  g_win_stop_calls++;
-}
-#endif
 
 static int tests_passed = 0, tests_failed = 0;
 static void ok(const char* name) {
@@ -89,9 +25,48 @@ static void fail(const char* name, const char* why) {
   tests_failed++;
 }
 
-static nv_window_t* make_window(void) {
+static void expect_err(const char* name, const char* code) {
+  if (test_last_reply_ok()) {
+    fail(name, "expected error reply");
+    return;
+  }
+  if (!test_last_reply_json_has_error_key()) {
+    fail(name, "expected JSON with \"error\" key");
+    return;
+  }
+  if (!test_last_reply_error_code() || strcmp(test_last_reply_error_code(), code) != 0) {
+    fail(name, "wrong error code");
+    return;
+  }
+  ok(name);
+}
+
+static long long g_last_start_id = -1;
+static char g_last_start_path[512];
+static int g_start_calls = 0;
+static int g_stop_calls = 0;
+
+static int test_fs_watch_start(long long id, const char* path, nv_window_t* w) {
+  (void)w;
+  g_start_calls++;
+  g_last_start_id = id;
+  if (path) {
+    strncpy(g_last_start_path, path, sizeof(g_last_start_path) - 1);
+    g_last_start_path[sizeof(g_last_start_path) - 1] = '\0';
+  } else {
+    g_last_start_path[0] = '\0';
+  }
+  return 0;
+}
+
+static void test_fs_watch_stop(long long id) {
+  (void)id;
+  g_stop_calls++;
+}
+
+static nv_window_t* make_window(nv_app_t* app) {
   nv_window_cfg_t cfg = {"FsWatchTest", 640, 480, 0, 0, 1, 0, 0, 0, 0};
-  return nv_window_alloc(NULL, &cfg);
+  return nv_window_alloc(app, &cfg);
 }
 
 static nv_json_val_t* parse(nv_arena_t* arena, const char* s) {
@@ -107,7 +82,12 @@ static void expect_ok(const char* name) {
 }
 
 static void test_fs_watch_hooks(void) {
-  nv_window_t* win = make_window();
+  nv_app_t app;
+  memset(&app, 0, sizeof app);
+  app.platform_api.fs_watch_start = test_fs_watch_start;
+  app.platform_api.fs_watch_stop = test_fs_watch_stop;
+
+  nv_window_t* win = make_window(&app);
   if (!win) {
     fail("make_window", "alloc failed");
     return;
@@ -119,85 +99,42 @@ static void test_fs_watch_hooks(void) {
     return;
   }
 
-#if defined(__APPLE__) && (defined(__GNUC__) || defined(__clang__))
-  g_mac_start_calls = 0;
-  g_mac_stop_calls = 0;
-  g_mac_last_start_id = -1;
-  g_mac_last_start_path[0] = '\0';
+  g_start_calls = 0;
+  g_stop_calls = 0;
+  g_last_start_id = -1;
+  g_last_start_path[0] = '\0';
 
   test_reset_replies();
   nv_arena_reset(arena);
   nv_op_fs_watch(win, 1, parse(arena, "{\"id\":7,\"path\":\"/tmp\"}"), arena);
   expect_ok("watch reply ok");
-  if (g_mac_start_calls != 1) fail("mac start calls", "expected 1");
-  else if (g_mac_last_start_id != 7) fail("mac start id", "wrong id");
-  else if (strcmp(g_mac_last_start_path, "/tmp") != 0) fail("mac start path", g_mac_last_start_path);
-  else ok("mac watch_start hook");
+  if (g_start_calls != 1) fail("watch start calls", "expected 1");
+  else if (g_last_start_id != 7) fail("watch start id", "wrong id");
+  else if (strcmp(g_last_start_path, "/tmp") != 0) fail("watch start path", g_last_start_path);
+  else ok("watch_start dispatch");
 
   test_reset_replies();
   nv_arena_reset(arena);
   nv_op_fs_unwatch(win, 2, parse(arena, "{\"id\":7}"), arena);
   expect_ok("unwatch reply ok");
-  if (g_mac_stop_calls != 1) fail("mac stop calls", "expected 1");
-  else ok("mac watch_stop hook");
-
-#elif (defined(__GNUC__) || defined(__clang__)) && defined(__linux__) && !defined(__APPLE__)
-  g_linux_start_calls = 0;
-  g_linux_stop_calls = 0;
-  g_linux_last_start_id = -1;
-  g_linux_last_start_path[0] = '\0';
+  if (g_stop_calls != 1) fail("watch stop calls", "expected 1");
+  else ok("watch_stop dispatch");
 
   test_reset_replies();
   nv_arena_reset(arena);
-  nv_op_fs_watch(win, 1, parse(arena, "{\"id\":9,\"path\":\"/tmp\"}"), arena);
-  expect_ok("watch reply ok");
-  if (g_linux_start_calls != 1) fail("linux start calls", "expected 1");
-  else if (g_linux_last_start_id != 9) fail("linux start id", "wrong id");
-  else if (strcmp(g_linux_last_start_path, "/tmp") != 0)
-    fail("linux start path", g_linux_last_start_path);
-  else ok("linux watch_start hook");
+  nv_op_fs_watch(win, 3, parse(arena, "{\"id\":0,\"path\":\"/tmp\"}"), arena);
+  expect_err("invalid id rejected", "ERR_INVALID_ARG");
 
   test_reset_replies();
   nv_arena_reset(arena);
-  nv_op_fs_unwatch(win, 2, parse(arena, "{\"id\":9}"), arena);
-  expect_ok("unwatch reply ok");
-  if (g_linux_stop_calls != 1) fail("linux stop calls", "expected 1");
-  else ok("linux watch_stop hook");
+  nv_op_fs_watch(win, 4, parse(arena, "{\"id\":1,\"path\":\"../bad\"}"), arena);
+  expect_err("traversal rejected", "ERR_PERMISSION");
 
-#elif defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))
-  g_win_start_calls = 0;
-  g_win_stop_calls = 0;
-  g_win_last_start_id = -1;
-  g_win_last_start_path[0] = '\0';
-
+  app.platform_api.fs_watch_start = NULL;
   test_reset_replies();
   nv_arena_reset(arena);
-  nv_op_fs_watch(win, 1, parse(arena, "{\"id\":3,\"path\":\"C:\\\\Windows\\\\Temp\"}"), arena);
-  expect_ok("watch reply ok");
-  if (g_win_start_calls != 1) fail("win start calls", "expected 1");
-  else if (g_win_last_start_id != 3) fail("win start id", "wrong id");
-  else ok("win watch_start hook");
-
-  test_reset_replies();
-  nv_arena_reset(arena);
-  nv_op_fs_unwatch(win, 2, parse(arena, "{\"id\":3}"), arena);
-  expect_ok("unwatch reply ok");
-  if (g_win_stop_calls != 1) fail("win stop calls", "expected 1");
-  else ok("win watch_stop hook");
-
-#else
-  test_reset_replies();
-  nv_arena_reset(arena);
-  nv_op_fs_watch(win, 1, parse(arena, "{\"id\":0,\"path\":\"/tmp\"}"), arena);
-  if (test_last_reply_ok()) fail("invalid id", "expected error");
-  else ok("invalid id rejected");
-
-  test_reset_replies();
-  nv_arena_reset(arena);
-  nv_op_fs_watch(win, 2, parse(arena, "{\"id\":1,\"path\":\"../bad\"}"), arena);
-  if (test_last_reply_ok()) fail("traversal", "expected error");
-  else ok("traversal rejected");
-#endif
+  nv_op_fs_watch(win, 5, parse(arena, "{\"id\":2,\"path\":\"/tmp\"}"), arena);
+  expect_err("watch not supported", "ERR_NOT_SUPPORTED");
 
   nv_arena_destroy(arena);
   nv_window_free(win);

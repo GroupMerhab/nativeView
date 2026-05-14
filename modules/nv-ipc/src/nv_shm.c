@@ -24,6 +24,16 @@
 #include <unistd.h>
 #endif
 
+#ifndef NV_HAVE_SHM_OPEN
+#define NV_HAVE_SHM_OPEN 1
+#endif
+
+#ifndef MAP_ANONYMOUS
+#ifdef MAP_ANON
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+#endif
+
 struct nv_shm {
   char name[64];
   size_t size;
@@ -98,6 +108,7 @@ NV_API nv_shm_t* nv_shm_create(const char* name, size_t size) {
   path[j] = '\0';
   if (j <= 1) { path[1] = 'x'; path[2] = '\0'; }
 
+#if (NV_HAVE_SHM_OPEN + 0)
   shm->fd = shm_open(path, O_CREAT | O_RDWR, 0600);
   if (shm->fd < 0) {
     NV_ERR("nv_shm: shm_open failed");
@@ -121,6 +132,14 @@ NV_API nv_shm_t* nv_shm_create(const char* name, size_t size) {
     free(shm);
     return NULL;
   }
+#else
+  shm->ptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (shm->ptr == MAP_FAILED) {
+    NV_ERR("nv_shm: mmap failed");
+    free(shm);
+    return NULL;
+  }
+#endif
 #endif
 
   return shm;
@@ -138,6 +157,7 @@ NV_API void nv_shm_destroy(nv_shm_t* shm) {
     munmap(shm->ptr, shm->size);
   if (shm->fd >= 0) {
     close(shm->fd);
+#if (NV_HAVE_SHM_OPEN + 0)
     char path[128];
     size_t j = 0;
     path[j++] = '/';
@@ -148,6 +168,7 @@ NV_API void nv_shm_destroy(nv_shm_t* shm) {
     }
     path[j] = '\0';
     if (j > 1) shm_unlink(path);
+#endif
   }
 #endif
 

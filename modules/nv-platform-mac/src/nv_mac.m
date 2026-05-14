@@ -1632,6 +1632,19 @@ static NVWindowPlatform *nv_mac_get_window_platform(nv_window_t *window) {
   return (__bridge NVWindowPlatform *)opaque;
 }
 
+NV_INTERNAL int nv_mac_fs_watch_start(long long id, const char* path, nv_window_t* w);
+NV_INTERNAL void nv_mac_fs_watch_stop(long long id);
+NV_INTERNAL void nv_mac_fs_watch_detach_for_window(nv_window_t* w);
+NV_INTERNAL void nv_mac_app_set_menu(const nv_menu_item_t* items, int count);
+NV_INTERNAL char* nv_mac_get_data_dir(void);
+NV_INTERNAL char* nv_mac_get_exe_path(void);
+NV_INTERNAL char* nv_mac_get_resource_dir(void);
+
+static void nv_mac_platform_app_set_menu(nv_window_t* w, const nv_menu_item_t* items, int count) {
+  (void)w;
+  nv_mac_app_set_menu(items, count);
+}
+
 /* =============================================================================
  * App Platform Hooks
  * =============================================================================
@@ -1639,6 +1652,69 @@ static NVWindowPlatform *nv_mac_get_window_platform(nv_window_t *window) {
 
 NV_INTERNAL void nv_app_platform_init(nv_app_t *app) {
   if (!app) return;
+
+  app->platform_api.platform_name = "mac";
+  app->platform_api.shell_open_url = nv_mac_shell_open_url;
+  app->platform_api.shell_open_path = nv_mac_shell_open_path;
+  app->platform_api.shell_show_in_folder = nv_mac_shell_show_in_folder;
+  app->platform_api.shell_exec = nv_mac_shell_exec;
+  app->platform_api.clipboard_read_text = nv_mac_clipboard_read_text;
+  app->platform_api.clipboard_write_text = nv_mac_clipboard_write_text;
+  app->platform_api.clipboard_clear = nv_mac_clipboard_clear;
+  app->platform_api.clipboard_has_text = nv_mac_clipboard_has_text;
+  app->platform_api.clipboard_read_image = nv_mac_clipboard_read_image;
+  app->platform_api.clipboard_write_image = nv_mac_clipboard_write_image;
+  app->platform_api.clipboard_has_image = nv_mac_clipboard_has_image;
+  app->platform_api.notification_show = nv_mac_notification_show;
+  app->platform_api.notification_close = nv_mac_notification_close;
+  app->platform_api.screen_get_all = nv_mac_screen_get_all;
+  app->platform_api.screen_get_primary = nv_mac_screen_get_primary;
+  app->platform_api.screen_get_cursor = nv_mac_screen_get_cursor;
+  app->platform_api.tray_create = nv_mac_tray_create;
+  app->platform_api.tray_destroy = nv_mac_tray_destroy;
+  app->platform_api.tray_set_icon = nv_mac_tray_set_icon;
+  app->platform_api.tray_set_tooltip = nv_mac_tray_set_tooltip;
+  app->platform_api.tray_set_menu = nv_mac_tray_set_menu;
+  app->platform_api.fs_watch_start = nv_mac_fs_watch_start;
+  app->platform_api.fs_watch_stop = nv_mac_fs_watch_stop;
+  app->platform_api.dialog_open_file_async = nv_mac_dialog_open_file_async;
+  app->platform_api.dialog_save_file_async = nv_mac_dialog_save_file_async;
+  app->platform_api.dialog_open_folder_async = nv_mac_dialog_open_folder_async;
+  app->platform_api.dialog_message_async = nv_mac_dialog_message_async;
+  app->platform_api.dialog_confirm_async = nv_mac_dialog_confirm_async;
+  app->platform_api.app_get_data_dir = nv_mac_get_data_dir;
+  app->platform_api.app_get_exe_path = nv_mac_get_exe_path;
+  app->platform_api.app_get_resource_dir = nv_mac_get_resource_dir;
+  app->platform_api.app_set_menu = nv_mac_platform_app_set_menu;
+  app->platform_api.window_create = nv_window_platform_create;
+  app->platform_api.window_destroy = nv_window_platform_destroy;
+  app->platform_api.window_show = nv_window_platform_show;
+  app->platform_api.window_hide = nv_window_platform_hide;
+  app->platform_api.window_set_modal = nv_window_platform_set_modal;
+  app->platform_api.window_set_title = nv_window_platform_set_title;
+  app->platform_api.window_set_size = nv_window_platform_set_size;
+  app->platform_api.window_get_size = nv_window_platform_get_size;
+  app->platform_api.window_set_position = nv_window_platform_set_position;
+  app->platform_api.window_get_position = nv_window_platform_get_position;
+  app->platform_api.window_center = nv_window_platform_center;
+  app->platform_api.window_minimize = nv_window_platform_minimize;
+  app->platform_api.window_maximize = nv_window_platform_maximize;
+  app->platform_api.window_restore = nv_window_platform_restore;
+  app->platform_api.window_fullscreen = nv_window_platform_fullscreen;
+  app->platform_api.window_is_fullscreen = nv_window_platform_is_fullscreen;
+  app->platform_api.window_focus = nv_window_platform_focus;
+  app->platform_api.window_is_focused = nv_window_platform_is_focused;
+  app->platform_api.window_set_resizable = nv_window_platform_set_resizable;
+  app->platform_api.window_set_always_on_top = nv_window_platform_set_always_on_top;
+  app->platform_api.window_set_opacity = nv_window_platform_set_opacity;
+  app->platform_api.window_set_zoom_factor = nv_window_platform_set_zoom_factor;
+  app->platform_api.window_close = nv_window_platform_close;
+  app->platform_api.window_load_html = nv_window_platform_load_html;
+  app->platform_api.window_load_url = nv_window_platform_load_url;
+  app->platform_api.window_eval_js = nv_window_platform_eval_js;
+  app->platform_api.window_set_context_menu = nv_mac_window_set_context_menu;
+  app->platform_api.hotkey_register = nv_mac_register_hotkey;
+  app->platform_api.hotkey_unregister = nv_mac_unregister_hotkey;
 
   NSApplication *nsApp = [NSApplication sharedApplication];
   [nsApp setActivationPolicy:NSApplicationActivationPolicyRegular];

@@ -1,5 +1,6 @@
 #include "nv_op_windows.h"
 #include "nv_window_manager.h"
+#include "nv_core_internal.h"
 #include "nv_window_internal.h"
 #include "nv_ipc_internal.h"
 #include "nv_json.h"
@@ -18,6 +19,7 @@ const char* nv_window_get_title(nv_window_t* window);
 
 // Helper to push event to all active windows
 NV_INTERNAL void nv_op_windows_push_all(const char* event, nv_json_t* data, nv_arena_t* arena) {
+    (void)arena;
     nv_wm_entry_t entries[NV_MAX_WINDOWS];
     size_t count = NV_MAX_WINDOWS;
     nv_wm_list(entries, &count);
@@ -129,7 +131,9 @@ NV_INTERNAL void nv_op_windows_open(nv_window_t* sender, int seq, const nv_json_
     
     // 7b. Apply modal if requested
     if (cfg.modal) {
-        nv_window_platform_set_modal(new_win, 1);
+        if (sender && sender->app && sender->app->platform_api.window_set_modal) {
+            sender->app->platform_api.window_set_modal(new_win, 1);
+        }
     }
     
     // 7c. Show window

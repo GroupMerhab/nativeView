@@ -455,8 +455,111 @@ static gboolean nv_linux_on_console_message(WebKitWebView* webview,
  * =============================================================================
  */
 
+NV_INTERNAL int nv_linux_shell_open_url(const char *url);
+NV_INTERNAL int nv_linux_shell_open_path(const char *path);
+NV_INTERNAL int nv_linux_shell_show_in_folder(const char *path);
+NV_INTERNAL nv_shell_result_t* nv_linux_shell_exec(const char *cmd);
+NV_INTERNAL char* nv_linux_clipboard_read_text(void);
+NV_INTERNAL int nv_linux_clipboard_write_text(const char* utf8);
+NV_INTERNAL void nv_linux_clipboard_clear(void);
+NV_INTERNAL int nv_linux_clipboard_has_text(void);
+NV_INTERNAL char* nv_linux_clipboard_read_image(int* out_w, int* out_h);
+NV_INTERNAL int nv_linux_clipboard_write_image(const char* base64_png);
+NV_INTERNAL int nv_linux_clipboard_has_image(void);
+NV_INTERNAL int nv_linux_notification_show(long long id, const char* title, const char* body,
+                                          const char* icon_path, nv_window_t* w);
+NV_INTERNAL int nv_linux_notification_close(long long id);
+NV_INTERNAL char* nv_linux_screen_get_all(void);
+NV_INTERNAL char* nv_linux_screen_get_primary(void);
+NV_INTERNAL char* nv_linux_screen_get_cursor(void);
+NV_INTERNAL int nv_linux_tray_create(long long id, const char* icon_path, const char* tooltip, nv_window_t* w);
+NV_INTERNAL int nv_linux_tray_destroy(long long id);
+NV_INTERNAL int nv_linux_tray_set_icon(long long id, const char* icon_path);
+NV_INTERNAL int nv_linux_tray_set_tooltip(long long id, const char* tooltip);
+NV_INTERNAL int nv_linux_tray_set_menu(long long id, const char** labels, const long long* item_ids, int count);
+NV_INTERNAL int nv_linux_fs_watch_start(long long id, const char* path, nv_window_t* w);
+NV_INTERNAL void nv_linux_fs_watch_stop(long long id);
+NV_INTERNAL void nv_linux_fs_watch_detach_for_window(nv_window_t* w);
+NV_INTERNAL void nv_linux_dialog_open_file_async(int allow_multiple, nv_dialog_ctx_t* ctx, nv_dialog_cb_t callback);
+NV_INTERNAL void nv_linux_dialog_save_file_async(nv_dialog_ctx_t* ctx, nv_dialog_cb_t callback);
+NV_INTERNAL void nv_linux_dialog_open_folder_async(nv_dialog_ctx_t* ctx, nv_dialog_cb_t callback);
+NV_INTERNAL void nv_linux_dialog_message_async(const char* title, const char* body, const char* type,
+                                               const char** buttons, size_t btn_count, nv_dialog_ctx_t* ctx,
+                                               nv_dialog_cb_t callback);
+NV_INTERNAL void nv_linux_dialog_confirm_async(const char* title, const char* body, nv_dialog_ctx_t* ctx,
+                                               nv_dialog_cb_t callback);
+NV_INTERNAL char* nv_linux_get_data_dir(void);
+NV_INTERNAL char* nv_linux_get_exe_path(void);
+NV_INTERNAL char* nv_linux_get_resource_dir(void);
+NV_INTERNAL char* nv_linux_get_locale(void);
+NV_INTERNAL void nv_linux_app_set_menu(nv_window_t* w, const nv_menu_item_t* items, int count);
+
 NV_INTERNAL void nv_app_platform_init(nv_app_t *app) {
   if (!app) return;
+
+  app->platform_api.platform_name = "linux";
+  app->platform_api.shell_open_url = nv_linux_shell_open_url;
+  app->platform_api.shell_open_path = nv_linux_shell_open_path;
+  app->platform_api.shell_show_in_folder = nv_linux_shell_show_in_folder;
+  app->platform_api.shell_exec = nv_linux_shell_exec;
+  app->platform_api.clipboard_read_text = nv_linux_clipboard_read_text;
+  app->platform_api.clipboard_write_text = nv_linux_clipboard_write_text;
+  app->platform_api.clipboard_clear = nv_linux_clipboard_clear;
+  app->platform_api.clipboard_has_text = nv_linux_clipboard_has_text;
+  app->platform_api.clipboard_read_image = nv_linux_clipboard_read_image;
+  app->platform_api.clipboard_write_image = nv_linux_clipboard_write_image;
+  app->platform_api.clipboard_has_image = nv_linux_clipboard_has_image;
+  app->platform_api.notification_show = nv_linux_notification_show;
+  app->platform_api.notification_close = nv_linux_notification_close;
+  app->platform_api.screen_get_all = nv_linux_screen_get_all;
+  app->platform_api.screen_get_primary = nv_linux_screen_get_primary;
+  app->platform_api.screen_get_cursor = nv_linux_screen_get_cursor;
+  app->platform_api.tray_create = nv_linux_tray_create;
+  app->platform_api.tray_destroy = nv_linux_tray_destroy;
+  app->platform_api.tray_set_icon = nv_linux_tray_set_icon;
+  app->platform_api.tray_set_tooltip = nv_linux_tray_set_tooltip;
+  app->platform_api.tray_set_menu = nv_linux_tray_set_menu;
+  app->platform_api.fs_watch_start = nv_linux_fs_watch_start;
+  app->platform_api.fs_watch_stop = nv_linux_fs_watch_stop;
+  app->platform_api.dialog_open_file_async = nv_linux_dialog_open_file_async;
+  app->platform_api.dialog_save_file_async = nv_linux_dialog_save_file_async;
+  app->platform_api.dialog_open_folder_async = nv_linux_dialog_open_folder_async;
+  app->platform_api.dialog_message_async = nv_linux_dialog_message_async;
+  app->platform_api.dialog_confirm_async = nv_linux_dialog_confirm_async;
+  app->platform_api.app_get_data_dir = nv_linux_get_data_dir;
+  app->platform_api.app_get_exe_path = nv_linux_get_exe_path;
+  app->platform_api.app_get_resource_dir = nv_linux_get_resource_dir;
+  app->platform_api.app_get_locale = nv_linux_get_locale;
+  app->platform_api.app_set_menu = nv_linux_app_set_menu;
+  app->platform_api.window_create = nv_window_platform_create;
+  app->platform_api.window_destroy = nv_window_platform_destroy;
+  app->platform_api.window_show = nv_window_platform_show;
+  app->platform_api.window_hide = nv_window_platform_hide;
+  app->platform_api.window_set_modal = nv_window_platform_set_modal;
+  app->platform_api.window_set_title = nv_window_platform_set_title;
+  app->platform_api.window_set_size = nv_window_platform_set_size;
+  app->platform_api.window_get_size = nv_window_platform_get_size;
+  app->platform_api.window_set_position = nv_window_platform_set_position;
+  app->platform_api.window_get_position = nv_window_platform_get_position;
+  app->platform_api.window_center = nv_window_platform_center;
+  app->platform_api.window_minimize = nv_window_platform_minimize;
+  app->platform_api.window_maximize = nv_window_platform_maximize;
+  app->platform_api.window_restore = nv_window_platform_restore;
+  app->platform_api.window_fullscreen = nv_window_platform_fullscreen;
+  app->platform_api.window_is_fullscreen = nv_window_platform_is_fullscreen;
+  app->platform_api.window_focus = nv_window_platform_focus;
+  app->platform_api.window_is_focused = nv_window_platform_is_focused;
+  app->platform_api.window_set_resizable = nv_window_platform_set_resizable;
+  app->platform_api.window_set_always_on_top = nv_window_platform_set_always_on_top;
+  app->platform_api.window_set_opacity = nv_window_platform_set_opacity;
+  app->platform_api.window_set_zoom_factor = nv_window_platform_set_zoom_factor;
+  app->platform_api.window_close = nv_window_platform_close;
+  app->platform_api.window_load_html = nv_window_platform_load_html;
+  app->platform_api.window_load_url = nv_window_platform_load_url;
+  app->platform_api.window_eval_js = nv_window_platform_eval_js;
+  app->platform_api.window_set_context_menu = nv_linux_window_set_context_menu;
+  app->platform_api.hotkey_register = nv_linux_register_hotkey;
+  app->platform_api.hotkey_unregister = nv_linux_unregister_hotkey;
 
   static int s_gtk_inited = 0;
   if (!s_gtk_inited) {
@@ -2102,12 +2205,12 @@ NV_INTERNAL NV_LINUX_NOTIF_ATTR int nv_linux_notification_show(long long id, con
   (void)body;
   (void)icon_path;
   (void)w;
-  return NV_LINUX_NOTIFICATION_RC_NOT_SUPPORTED;
+  return NV_PLATFORM_RC_NOT_SUPPORTED;
 }
 
 NV_INTERNAL NV_LINUX_NOTIF_ATTR int nv_linux_notification_close(long long id) {
   (void)id;
-  return NV_LINUX_NOTIFICATION_RC_NOT_SUPPORTED;
+  return NV_PLATFORM_RC_NOT_SUPPORTED;
 }
 
 #endif /* NV_HAS_LIBNOTIFY */

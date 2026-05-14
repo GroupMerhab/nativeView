@@ -8,6 +8,7 @@ A cross-platform C library for embedding native WebViews in applications.
 - **Multi-Window Support**: Create and manage multiple windows with a global registry and ID-based routing.
 - **Bidirectional IPC**: Efficient JSON-based messaging between native and web layers.
 - **IPC Bus**: Built-in message bus for window-to-window and broadcast communication.
+- **HTTP Server (nv-http)**: Single-threaded and blocking by design; intended for simple local/dev use (e.g. serving static assets), not high-concurrency production workloads.
 - **Minimal Dependencies**: Pure C with platform-native APIs.
 - **Memory Efficient**: Arena-based allocator, zero-copy where possible.
 - **Single File Distribution**: Optional amalgamation build.
@@ -85,6 +86,7 @@ See [docs/architecture.md](docs/architecture.md) for detailed design documentati
 - **nv_window_manager**: Registry for multi-window management.
 - **nv_ipc**: JSON-RPC messaging and event bus.
 - **nv_ops**: Modular operation handlers (FileSystem, Dialog, Clipboard, etc.).
+- **nv_http**: Embedded HTTP server (single-threaded, blocking). Useful for lightweight scenarios; not intended for production concurrency.
 - **nv_arena**: Fast, safe memory allocation.
 - **nv_json**: Strict JSON parsing and serialization.
 

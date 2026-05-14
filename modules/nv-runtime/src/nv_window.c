@@ -9,6 +9,7 @@
 #include "nv_window_internal.h"
 #include "nv_ipc_internal.h"
 #include "nv_arena.h"
+#include "nv_core_internal.h"
 #include "nv_util.h"
 #include "nv_window_manager.h"
 #include "nv.h"
@@ -16,29 +17,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-NV_INTERNAL void nv_window_platform_create(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_destroy(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_show(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_hide(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_set_title(nv_window_t* window, const char* title);
-NV_INTERNAL void nv_window_platform_set_size(nv_window_t* window, int width, int height);
-NV_INTERNAL void nv_window_platform_set_position(nv_window_t* window, int x, int y);
-NV_INTERNAL void nv_window_platform_get_size(nv_window_t* window, int* out_w, int* out_h);
-NV_INTERNAL void nv_window_platform_get_position(nv_window_t* window, int* out_x, int* out_y);
-NV_INTERNAL void nv_window_platform_center(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_minimize(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_maximize(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_restore(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_fullscreen(nv_window_t* window, int enable);
-NV_INTERNAL int  nv_window_platform_is_fullscreen(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_focus(nv_window_t* window);
-NV_INTERNAL int  nv_window_platform_is_focused(nv_window_t* window);
-NV_INTERNAL void nv_window_platform_set_resizable(nv_window_t* window, int enable);
-NV_INTERNAL void nv_window_platform_set_always_on_top(nv_window_t* window, int enable);
-NV_INTERNAL void nv_window_platform_set_opacity(nv_window_t* window, int opacity_pct);
-NV_INTERNAL void nv_window_platform_set_zoom_factor(nv_window_t* window, double factor);
-NV_INTERNAL void nv_window_platform_set_modal(nv_window_t* window, int enable);
-NV_INTERNAL void nv_window_platform_close(nv_window_t* window);
+static nv_platform_api_t* nv_window_platform_api(nv_window_t* window) {
+  if (!window || !window->app) return NULL;
+  return &window->app->platform_api;
+}
 
 
 /* =============================================================================
@@ -128,7 +110,14 @@ NV_INTERNAL nv_window_t* nv_window_alloc(nv_app_t* app, const nv_window_cfg_t* i
   }
   
   /* Call platform-specific initialization */
-  nv_window_platform_create(window);
+  if (window->app) {
+    nv_platform_api_t* api = nv_window_platform_api(window);
+    if (api && api->window_create) {
+      api->window_create(window);
+    } else {
+      NV_ERR("Window: missing platform window_create hook");
+    }
+  }
   
   /* Auto-register window with ID */
   char id[64];
@@ -150,7 +139,10 @@ NV_INTERNAL void nv_window_free(nv_window_t* window) {
 
   /* Clean up platform resources first */
   if (window->app) {
-    nv_window_platform_destroy(window);
+    nv_platform_api_t* api = nv_window_platform_api(window);
+    if (api && api->window_destroy) {
+      api->window_destroy(window);
+    }
   }
   
   /* IPC state is freed when arena is destroyed */
@@ -278,13 +270,19 @@ int nv_window_is_open(nv_window_t* window) {
 
 void nv_window_show(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_show(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_show) {
+    api->window_show(window);
+  }
   window->visible = 1;
 }
 
 void nv_window_hide(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_hide(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_hide) {
+    api->window_hide(window);
+  }
   window->visible = 0;
 }
 
@@ -312,7 +310,10 @@ const char* nv_window_get_url(nv_window_t* window) {
 void nv_window_set_title(nv_window_t* window, const char* title) {
   if (!window || !title) return;
   window->cfg.title = title;
-  nv_window_platform_set_title(window, title);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_title) {
+    api->window_set_title(window, title);
+  }
 }
 
 const char* nv_window_get_title(nv_window_t* window) {
@@ -324,14 +325,20 @@ int nv_window_resize(nv_window_t* window, int width, int height) {
   if (!window || width <= 0 || height <= 0) return -1;
   window->cfg.width = width;
   window->cfg.height = height;
-  nv_window_platform_set_size(window, width, height);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_size) {
+    api->window_set_size(window, width, height);
+  }
   return 0;
 }
 
 int nv_window_get_size(nv_window_t* window, int* out_width, int* out_height) {
   if (!window || !out_width || !out_height) return -1;
   int w = window->cfg.width, h = window->cfg.height;
-  nv_window_platform_get_size(window, &w, &h);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_get_size) {
+    api->window_get_size(window, &w, &h);
+  }
   *out_width = w;
   *out_height = h;
   return 0;
@@ -340,14 +347,20 @@ int nv_window_get_size(nv_window_t* window, int* out_width, int* out_height) {
 int nv_window_set_position(nv_window_t* window, int x, int y) {
   (void)window; (void)x; (void)y;
   if (!window) return -1;
-  nv_window_platform_set_position(window, x, y);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_position) {
+    api->window_set_position(window, x, y);
+  }
   return 0;
 }
 
 int nv_window_get_position(nv_window_t* window, int* out_x, int* out_y) {
   if (!window || !out_x || !out_y) return -1;
   int x = 0, y = 0;
-  nv_window_platform_get_position(window, &x, &y);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_get_position) {
+    api->window_get_position(window, &x, &y);
+  }
   *out_x = x;
   *out_y = y;
   return 0;
@@ -355,7 +368,10 @@ int nv_window_get_position(nv_window_t* window, int* out_x, int* out_y) {
 
 void nv_window_center(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_center(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_center) {
+    api->window_center(window);
+  }
 }
 
 /* Public Property API */
@@ -363,7 +379,10 @@ NV_API void nv_window_set_size(nv_window_t* window, int width, int height) {
   if (!window || width <= 0 || height <= 0) return;
   window->cfg.width = width;
   window->cfg.height = height;
-  nv_window_platform_set_size(window, width, height);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_size) {
+    api->window_set_size(window, width, height);
+  }
 }
 
 NV_API void nv_window_set_min_size(nv_window_t* window, int width, int height) {
@@ -374,63 +393,101 @@ NV_API void nv_window_set_min_size(nv_window_t* window, int width, int height) {
 
 NV_API void nv_window_fullscreen(nv_window_t* window, int enable) {
   if (!window) return;
-  nv_window_platform_fullscreen(window, enable ? 1 : 0);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_fullscreen) {
+    api->window_fullscreen(window, enable ? 1 : 0);
+  }
 }
 
 NV_API int nv_window_is_fullscreen(nv_window_t* window) {
   if (!window) return 0;
-  return nv_window_platform_is_fullscreen(window) ? 1 : 0;
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_is_fullscreen) {
+    return api->window_is_fullscreen(window) ? 1 : 0;
+  }
+  return 0;
 }
 
 NV_API void nv_window_minimize(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_minimize(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_minimize) {
+    api->window_minimize(window);
+  }
 }
 
 NV_API void nv_window_maximize(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_maximize(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_maximize) {
+    api->window_maximize(window);
+  }
 }
 
 NV_API void nv_window_restore(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_restore(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_restore) {
+    api->window_restore(window);
+  }
 }
 
 NV_API void nv_window_focus(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_focus(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_focus) {
+    api->window_focus(window);
+  }
 }
 
 NV_API int nv_window_is_focused(nv_window_t* window) {
   if (!window) return 0;
-  return nv_window_platform_is_focused(window) ? 1 : 0;
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_is_focused) {
+    return api->window_is_focused(window) ? 1 : 0;
+  }
+  return 0;
 }
 
 NV_API void nv_window_set_resizable(nv_window_t* window, int enable) {
   if (!window) return;
-  nv_window_platform_set_resizable(window, enable ? 1 : 0);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_resizable) {
+    api->window_set_resizable(window, enable ? 1 : 0);
+  }
 }
 
 NV_API void nv_window_set_always_on_top(nv_window_t* window, int enable) {
   if (!window) return;
-  nv_window_platform_set_always_on_top(window, enable ? 1 : 0);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_always_on_top) {
+    api->window_set_always_on_top(window, enable ? 1 : 0);
+  }
 }
 
 NV_API void nv_window_set_opacity(nv_window_t* window, int opacity_pct) {
   if (!window) return;
-  nv_window_platform_set_opacity(window, opacity_pct);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_opacity) {
+    api->window_set_opacity(window, opacity_pct);
+  }
 }
 
 NV_API void nv_window_set_zoom_factor(nv_window_t* window, double factor) {
   if (!window) return;
   if (factor <= 0.0) return;
-  nv_window_platform_set_zoom_factor(window, factor);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_set_zoom_factor) {
+    api->window_set_zoom_factor(window, factor);
+  }
 }
 
 NV_API void nv_window_request_close(nv_window_t* window) {
   if (!window) return;
-  nv_window_platform_close(window);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_close) {
+    api->window_close(window);
+  }
 }
 
 /* Messaging public API */
@@ -452,19 +509,20 @@ NV_API void nv_window_on_close(nv_window_t* window, nv_close_cb_t callback, void
   nv_ipc_set_close_cb(state, callback, userdata);
 }
 
-/* Web content public API */
-NV_INTERNAL void nv_window_platform_load_html(nv_window_t* window, const char* html, const char* base_url);
-NV_INTERNAL void nv_window_platform_load_url(nv_window_t* window, const char* url);
-NV_INTERNAL void nv_window_platform_eval_js(nv_window_t* window, const char* js);
-
 NV_API void nv_load_url(nv_window_t* window, const char* url) {
   if (!window || !url) return;
-  nv_window_platform_load_url(window, url);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_load_url) {
+    api->window_load_url(window, url);
+  }
 }
 
 NV_API void nv_load_html(nv_window_t* window, const char* html, const char* base_url) {
   if (!window || !html) return;
-  nv_window_platform_load_html(window, html, base_url);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_load_html) {
+    api->window_load_html(window, html, base_url);
+  }
 }
 
 NV_API void nv_load_html_ref(nv_window_t* window, const char* html, size_t length, const char* base_url) {
@@ -474,19 +532,29 @@ NV_API void nv_load_html_ref(nv_window_t* window, const char* html, size_t lengt
   if (!buf) return;
   memcpy(buf, html, length);
   buf[length] = '\0';
-  nv_window_platform_load_html(window, buf, base_url);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_load_html) {
+    api->window_load_html(window, buf, base_url);
+  }
 }
 
 NV_API void nv_eval_js(nv_window_t* window, const char* js) {
   if (!window || !js) return;
-  nv_window_platform_eval_js(window, js);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_eval_js) {
+    api->window_eval_js(window, js);
+  }
 }
 
 NV_API void nv_eval_js_batch(nv_window_t* window, const char** scripts, size_t count) {
   if (!window || !scripts || count == 0) return;
   for (size_t i = 0; i < count; i++) {
     const char* s = scripts[i];
-    if (s) nv_window_platform_eval_js(window, s);
+    if (!s) continue;
+    nv_platform_api_t* api = nv_window_platform_api(window);
+    if (api && api->window_eval_js) {
+      api->window_eval_js(window, s);
+    }
   }
 }
 
@@ -513,7 +581,10 @@ NV_API NV_SEND_ATTR void nv_send(nv_window_t* window, const char* event, const c
   nv_arena_t* arena = nv_window_get_arena(window);
   const char* js = nv_ipc_build_send(arena, event, json);
   if (!js) return;
-  nv_window_platform_eval_js(window, js);
+  nv_platform_api_t* api = nv_window_platform_api(window);
+  if (api && api->window_eval_js) {
+    api->window_eval_js(window, js);
+  }
 }
 #ifdef _MSC_VER
 #pragma pop_macro("send")

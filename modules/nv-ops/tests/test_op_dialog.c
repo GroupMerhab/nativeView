@@ -9,28 +9,33 @@
 
 #include "test_helpers.h"
 
-/* Strong overrides for weak nv_win_dialog_open_file_async (MinGW/Clang on Windows). */
-#if defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))
-void nv_win_dialog_open_file_async(int allow_multiple, nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
-  (void)allow_multiple;
-  if (ctx && cb) cb(ctx, 1, NULL);
-}
-#endif
+static int tests_passed = 0, tests_failed = 0;
+static void ok(const char* name){ printf("✓ %s\n", name); tests_passed++; }
+static void fail(const char* name, const char* why){ printf("✗ %s: %s\n", name, why); tests_failed++; }
 
-/* Strong overrides for weak nv_linux_dialog_* (headless / CI without GTK display). */
-#if defined(__linux__) && (defined(__GNUC__) || defined(__clang__))
-void nv_linux_dialog_open_file_async(int allow_multiple, nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
+static void expect_err(const char* name, const char* code) {
+  if (test_last_reply_ok()) { fail(name, "expected error reply"); return; }
+  if (!test_last_reply_json_has_error_key()) { fail(name, "expected JSON with \"error\" key"); return; }
+  if (!test_last_reply_error_code() || strcmp(test_last_reply_error_code(), code) != 0) {
+    fail(name, "wrong error code");
+    return;
+  }
+  ok(name);
+}
+
+static void test_dialog_open_file_async(int allow_multiple, nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
   (void)allow_multiple;
   if (ctx && cb) cb(ctx, 1, NULL);
 }
-void nv_linux_dialog_save_file_async(nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
+static void test_dialog_save_file_async(nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
   if (ctx && cb) cb(ctx, 1, NULL);
 }
-void nv_linux_dialog_open_folder_async(nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
+static void test_dialog_open_folder_async(nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
   if (ctx && cb) cb(ctx, 1, NULL);
 }
-void nv_linux_dialog_message_async(const char* title, const char* body, const char* type,
-                                   const char** buttons, size_t btn_count, nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
+static void test_dialog_message_async(const char* title, const char* body, const char* type,
+                                      const char** buttons, size_t btn_count, nv_dialog_ctx_t* ctx,
+                                      nv_dialog_cb_t cb) {
   (void)title;
   (void)body;
   (void)type;
@@ -42,7 +47,7 @@ void nv_linux_dialog_message_async(const char* title, const char* body, const ch
     cb(ctx, 0, (void*)idx);
   }
 }
-void nv_linux_dialog_confirm_async(const char* title, const char* body, nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
+static void test_dialog_confirm_async(const char* title, const char* body, nv_dialog_ctx_t* ctx, nv_dialog_cb_t cb) {
   (void)title;
   (void)body;
   if (ctx && cb) {
@@ -51,15 +56,10 @@ void nv_linux_dialog_confirm_async(const char* title, const char* body, nv_dialo
     cb(ctx, 0, (void*)v);
   }
 }
-#endif
 
-static int tests_passed = 0, tests_failed = 0;
-static void ok(const char* name){ printf("✓ %s\n", name); tests_passed++; }
-static void fail(const char* name, const char* why){ printf("✗ %s: %s\n", name, why); tests_failed++; }
-
-static nv_window_t* make_window(void) {
+static nv_window_t* make_window(nv_app_t* app) {
   nv_window_cfg_t cfg = { "DialogTest", 640, 480, 0, 0, 1, 0, 0, 0, 0 };
-  return nv_window_alloc(NULL, &cfg);
+  return nv_window_alloc(app, &cfg);
 }
 
 static nv_json_val_t* parse(nv_arena_t* arena, const char* s){
@@ -76,7 +76,15 @@ static void expect_invalid_args(const char* name) {
 }
 
 static void test_dialog_ops(void) {
-  nv_window_t* win = make_window();
+  nv_app_t app;
+  memset(&app, 0, sizeof app);
+  app.platform_api.dialog_open_file_async = test_dialog_open_file_async;
+  app.platform_api.dialog_save_file_async = test_dialog_save_file_async;
+  app.platform_api.dialog_open_folder_async = test_dialog_open_folder_async;
+  app.platform_api.dialog_message_async = test_dialog_message_async;
+  app.platform_api.dialog_confirm_async = test_dialog_confirm_async;
+
+  nv_window_t* win = make_window(&app);
   if (!win) { fail("make_window", "alloc failed"); return; }
   nv_arena_t* arena = nv_arena_create(65536);
   if (!arena) { fail("arena", "alloc failed"); nv_window_free(win); return; }
@@ -106,6 +114,13 @@ static void test_dialog_ops(void) {
   nv_op_dialog_confirm(win, 5, parse(arena, "{\"title\":\"t\",\"body\":\"b\"}"), arena);
   if (!test_last_reply_ok()) fail("confirm", "expected ok"); else ok("confirm");
 
+  app.platform_api.dialog_open_file_async = NULL;
+  test_reset_replies();
+  nv_arena_reset(arena);
+  nv_op_dialog_open_file(win, 10, NULL, arena);
+  expect_err("open_file not supported", "ERR_NOT_SUPPORTED");
+  app.platform_api.dialog_open_file_async = test_dialog_open_file_async;
+
   test_reset_replies();
   nv_arena_reset(arena);
   nv_op_dialog_message(win, 6, parse(arena, "{\"title\":\"only\"}"), arena);
@@ -130,43 +145,9 @@ static void test_dialog_ops(void) {
   nv_window_free(win);
 }
 
-#if (defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))) || \
-    (defined(__linux__) && (defined(__GNUC__) || defined(__clang__)))
-static void test_dialog_open_file_cancel_stubbed(void) {
-  nv_app_t* app = nv_app_alloc();
-  if (!app) { fail("cancel_stub_app", "nv_app_alloc failed"); return; }
-  nv_window_cfg_t cfg = { "DialogCancel", 640, 480, 0, 0, 1, 0, 0, 0, 0 };
-  nv_window_t* win = nv_window_alloc(app, &cfg);
-  if (!win) { fail("cancel_stub_win", "nv_window_alloc failed"); nv_app_free(app); return; }
-  nv_arena_t* arena = nv_arena_create(2048);
-  if (!arena) { fail("cancel_stub_arena", "alloc failed"); nv_window_free(win); nv_app_free(app); return; }
-
-  test_reset_replies();
-  nv_op_dialog_open_file(win, 99, NULL, arena);
-  if (!test_last_reply_ok()) {
-    fail("cancel_stub_reply", "expected ok");
-  } else {
-    const char* j = test_last_reply_json();
-    if (!j || !strstr(j, "\"canceled\":true") || !strstr(j, "\"paths\":[]")) {
-      fail("cancel_stub_json", "expected canceled true and empty paths");
-    } else {
-      ok("open_file_cancel_stubbed");
-    }
-  }
-
-  nv_arena_destroy(arena);
-  nv_window_free(win);
-  nv_app_free(app);
-}
-#endif
-
 int main(void){
   printf("=== nativeview Dialog Ops Tests ===\n\n");
   test_dialog_ops();
-#if (defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))) || \
-    (defined(__linux__) && (defined(__GNUC__) || defined(__clang__)))
-  test_dialog_open_file_cancel_stubbed();
-#endif
   printf("\n=== Summary ===\n");
   printf("Passed: %d/%d\n", tests_passed, tests_passed + tests_failed);
   return (tests_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;

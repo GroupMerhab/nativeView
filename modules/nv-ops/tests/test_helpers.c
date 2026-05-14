@@ -41,7 +41,7 @@ void nv_ipc_reply_ok(nv_window_t* w, int seq, nv_json_t* result, nv_arena_t* are
     g_last_seq = seq;
     g_last_err[0] = '\0';
     
-    char* s = result ? nv_json_serialize(result) : NULL;
+    const char* s = result ? nv_json_serialize(result) : NULL;
     if (g_last_json) {
         free(g_last_json);
         g_last_json = NULL;

@@ -7,6 +7,7 @@
 
 #include "nv_op_fs.h"
 #include "nv.h"
+#include "nv_core_internal.h"
 #include "nv_window_internal.h"
 #include "nv_json.h"
 #include <stdio.h>
@@ -40,76 +41,17 @@ NV_INTERNAL void nv_fs_changed_emit(nv_window_t* w, long long id, const char* pa
   if (payload) nv_send(w, "fs.changed", payload);
 }
 
-#ifdef __APPLE__
-NV_INTERNAL int nv_mac_fs_watch_start(long long id, const char* path, nv_window_t* w);
-NV_INTERNAL void nv_mac_fs_watch_stop(long long id);
-#elif defined(_WIN32)
-#if (defined(__GNUC__) || defined(__clang__))
-__attribute__((weak)) int nv_win_fs_watch_start(long long id, const char* path, nv_window_t* w) {
-  (void)id;
-  (void)path;
-  (void)w;
-  return -1;
-}
-__attribute__((weak)) void nv_win_fs_watch_stop(long long id) { (void)id; }
-#else
-static int nv_win_fs_watch_start_stub(long long id, const char* path, nv_window_t* w) {
-  (void)id;
-  (void)path;
-  (void)w;
-  return -1;
-}
-static void nv_win_fs_watch_stop_stub(long long id) { (void)id; }
-#define nv_win_fs_watch_start nv_win_fs_watch_start_stub
-#define nv_win_fs_watch_stop nv_win_fs_watch_stop_stub
-#endif
-#elif (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER) && defined(__linux__)
-__attribute__((weak)) int nv_linux_fs_watch_start(long long id, const char* path, nv_window_t* w) {
-  (void)id;
-  (void)path;
-  (void)w;
-  return -1;
-}
-__attribute__((weak)) void nv_linux_fs_watch_stop(long long id) { (void)id; }
-#elif (defined(__GNUC__) || defined(__clang__)) && !defined(_MSC_VER)
-__attribute__((weak)) int nv_mac_fs_watch_start(long long id, const char* path, nv_window_t* w) {
-  (void)id;
-  (void)path;
-  (void)w;
-  return -1;
-}
-__attribute__((weak)) void nv_mac_fs_watch_stop(long long id) { (void)id; }
-#else
-static int nv_mac_fs_watch_start_stub(long long id, const char* path, nv_window_t* w) {
-  (void)id;
-  (void)path;
-  (void)w;
-  return -1;
-}
-static void nv_mac_fs_watch_stop_stub(long long id) { (void)id; }
-#define nv_mac_fs_watch_start nv_mac_fs_watch_start_stub
-#define nv_mac_fs_watch_stop nv_mac_fs_watch_stop_stub
-#endif
-
 static void watch_remove_at(size_t i) {
   if (i >= g_watch_count) return;
   if (i + 1 < g_watch_count) g_watches[i] = g_watches[g_watch_count - 1];
   g_watch_count--;
 }
 
-static void watch_stop_platform_by_id(long long id) {
-#ifdef __APPLE__
-  nv_mac_fs_watch_stop(id);
-#elif defined(_WIN32)
-  nv_win_fs_watch_stop(id);
-#elif defined(__linux__) && !defined(__APPLE__)
-  nv_linux_fs_watch_stop(id);
-#else
-  nv_mac_fs_watch_stop(id);
-#endif
-}
-
 NV_INTERNAL void nv_op_fs_watch(nv_window_t* w, int seq, const nv_json_val_t* args, nv_arena_t* arena) {
+  if (!w || !w->app) {
+    nv_ipc_reply_err(w, seq, "ERR_INVALID_ARG", "no window context", arena);
+    return;
+  }
   long long id = args ? nv_json_get_int(args, "id") : 0;
   const char* path = args ? nv_json_get_str(args, "path") : NULL;
   if (id <= 0) {
@@ -132,24 +74,27 @@ NV_INTERNAL void nv_op_fs_watch(nv_window_t* w, int seq, const nv_json_val_t* ar
 
   for (size_t i = 0; i < g_watch_count; i++) {
     if (g_watches[i].id == id) {
-      watch_stop_platform_by_id(id);
+      const nv_platform_api_t* api = &w->app->platform_api;
+      if (api->fs_watch_stop) {
+        api->fs_watch_stop(id);
+      }
       watch_remove_at(i);
       break;
     }
   }
 
-  int rc;
-#ifdef __APPLE__
-  rc = nv_mac_fs_watch_start(id, path, w);
-#elif defined(_WIN32)
-  rc = nv_win_fs_watch_start(id, path, w);
-#elif defined(__linux__) && !defined(__APPLE__)
-  rc = nv_linux_fs_watch_start(id, path, w);
-#else
-  rc = nv_mac_fs_watch_start(id, path, w);
-#endif
+  const nv_platform_api_t* api = &w->app->platform_api;
+  if (!api->fs_watch_start) {
+    nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "fs.watch not supported", arena);
+    return;
+  }
+  int rc = api->fs_watch_start(id, path, w);
   if (rc != 0) {
-    nv_ipc_reply_err(w, seq, "ERR_IO", "fs.watch failed", arena);
+    if (rc == NV_PLATFORM_RC_NOT_SUPPORTED) {
+      nv_ipc_reply_err(w, seq, "ERR_NOT_SUPPORTED", "fs.watch not supported", arena);
+    } else {
+      nv_ipc_reply_err(w, seq, "ERR_IO", "fs.watch failed", arena);
+    }
     return;
   }
 
@@ -163,10 +108,12 @@ NV_INTERNAL void nv_op_fs_watch(nv_window_t* w, int seq, const nv_json_val_t* ar
 NV_INTERNAL void nv_op_fs_unwatch(nv_window_t* w, int seq, const nv_json_val_t* args,
                                   nv_arena_t* arena) {
   long long id = args ? nv_json_get_int(args, "id") : 0;
-  (void)w;
+  const nv_platform_api_t* api = (w && w->app) ? &w->app->platform_api : NULL;
   for (size_t i = 0; i < g_watch_count; i++) {
     if (g_watches[i].id == id) {
-      watch_stop_platform_by_id(id);
+      if (api && api->fs_watch_stop) {
+        api->fs_watch_stop(id);
+      }
       watch_remove_at(i);
       break;
     }
