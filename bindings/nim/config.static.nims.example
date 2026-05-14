@@ -1,0 +1,38 @@
+## Copy to `config.nims` next to your app or pass `nim c --nimcache:...` with `-d:NV_CMAKE_BUILD`.
+## Fill `NV_CMAKE_BUILD` to your CMake binary directory (same tree as `cmake --build`).
+
+when not defined(NV_CMAKE_BUILD):
+  echo "Define NV_CMAKE_BUILD to your CMake build directory, e.g.:"
+  echo "  nim c -d:NV_CMAKE_BUILD=/path/to/build ..."
+  quit 1
+
+const build = getDefine("NV_CMAKE_BUILD")
+
+when defined(windows):
+  ## MSVC-style `.lib` archives; toolchain must match how nativeview was built.
+  switch("passL", build & r"/modules/nv-runtime/nv-runtime.lib")
+  switch("passL", build & r"/modules/nv-platform-win/nv-platform-win.lib")
+  switch("passL", build & r"/modules/nv-ops/nv-ops.lib")
+  switch("passL", build & r"/modules/nv-ipc/nv-ipc.lib")
+  switch("passL", build & r"/modules/nv-core/nv-core.lib")
+  ## WebView2 + Win32 (mirror root CMakeLists `nativeview_shared` block):
+  ## switch("passL", "/DEFAULTLIB:WebView2LoaderStatic.lib")
+  ## switch("passL", "user32.lib ole32.lib shell32.lib uuid.lib runtimeobject.lib propsys.lib shlwapi.lib gdiplus.lib")
+elif defined(macosx):
+  ## Archive order matches `examples/pascal/build_static_example.sh` / C `hello` target.
+  switch("passL", "-Wl,-force_load," & build & "/modules/nv-platform-mac/libnv-platform-mac.a")
+  switch("passL", build & "/modules/nv-runtime/libnv-runtime.a")
+  switch("passL", build & "/modules/nv-ops/libnv-ops.a")
+  switch("passL", build & "/modules/nv-ipc/libnv-ipc.a")
+  switch("passL", build & "/modules/nv-core/libnv-core.a")
+  switch("passL", "-framework Carbon -framework Cocoa -framework CoreServices -framework WebKit -framework UserNotifications -lobjc")
+else:
+  ## GNU ld / MinGW: group rescans static archives until undefined symbols resolve.
+  switch("passL", "-Wl,--start-group")
+  switch("passL", build & "/modules/nv-runtime/libnv-runtime.a")
+  switch("passL", build & "/modules/nv-platform-linux/libnv-platform-linux.a")
+  switch("passL", build & "/modules/nv-ops/libnv-ops.a")
+  switch("passL", build & "/modules/nv-ipc/libnv-ipc.a")
+  switch("passL", build & "/modules/nv-core/libnv-core.a")
+  switch("passL", "-Wl,--end-group")
+  ## Add WebKitGTK / GTK / optional deps — use `pkg-config` output from nv-platform-linux CMakeLists.txt.

@@ -159,7 +159,7 @@ Status legend: `[ ]` pending · `[x]` done · `[-]` in progress
 
 ## Phase 6 — More Examples
 
-- [x] `examples/todo_app/main.c` — input + button to add items, list with delete buttons (dynamic component list + `NV_SET_STATE`)
+- [x] `examples/todo_app/c_todo/main.c` — input + button to add items, list with delete buttons (dynamic component list + `NV_SET_STATE`)
 - [x] `examples/settings_form/main.c` — labels, inputs, checkboxes, select, slider, textarea, save button (all widget types)
 - [x] `examples/live_data/main.c` — slider + live display (Phase 4)
 - [x] `examples/vue_slot/main.c` — C form with a Vue component mounted in a `NV_COMP_VUE` slot

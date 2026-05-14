@@ -677,13 +677,8 @@ if(NOT NV_IS_MOBILE AND NV_BUILD_UI AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modu
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/modules/nv-ui/include
   )
-  # todo_app — dynamic component list (add/remove items)
-  add_executable(todo_app examples/todo_app/main.c)
-  target_link_libraries(todo_app PRIVATE nativeview nv-ui)
-  target_include_directories(todo_app PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/modules/nv-ui/include
-  )
+  # todo_app — SQLite + dynamic list (CMake in examples/todo_app/c_todo; shared Vue UI in examples/todo_app/ui)
+  add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/examples/todo_app/c_todo")
   # settings_form — all widget types (label, input, checkbox, select, slider, textarea)
   add_executable(settings_form examples/settings_form/main.c)
   target_link_libraries(settings_form PRIVATE nativeview nv-ui)

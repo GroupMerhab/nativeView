@@ -1,0 +1,19 @@
+[package]
+name = "nativeview"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Low-level Rust FFI to the nativeview public C API (include/nv.h, nv_hotkey.h, nv_version_string / nv_get_version_info / nv_bench_now from nv_util.h)."
+publish = false
+
+[lib]
+path = "src/nativeview.rs"
+
+[features]
+default = ["link-shared"]
+## Link `libnativeview.so` / `libnativeview.dylib` / `nativeview.dll` (`-l nativeview`).
+link-shared = []
+## Link `libnativeview.a` / `nativeview.lib`. Pass search path via `RUSTFLAGS=-L...` / `.cargo/config.toml`.
+link-static = []
+## Declare C symbols only; the final binary supplies nativeview via `RUSTFLAGS` / `build.rs` (e.g. CMake static archive `--start-group` chains as in docs/Nim.md).
+link-none = []

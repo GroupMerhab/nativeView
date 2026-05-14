@@ -1,0 +1,15 @@
+build/
+build-nim-todo-static/
+build-python-todo-shared/
+build-zig-todo-static/
+build-rust-todo-static/
+c_todo/build/
+nim_todo/nim_todo
+rust_todo/target/
+rust_todo/rust_todo
+zig_todo/zig_todo
+zig_todo/test_todo_store
+zig_todo/test_todo_bridge
+ui/node_modules/
+ui/dist/
+*.db

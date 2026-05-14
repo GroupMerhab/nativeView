@@ -1,0 +1,141 @@
+/* Theme tokens — swap this file to reskin the app */
+:root {
+  --nv-bg: #f4f6fb;
+  --nv-surface: #ffffff;
+  --nv-surface-2: #eef2ff;
+  --nv-border: #d8def0;
+  --nv-text: #1c2541;
+  --nv-muted: #5c6785;
+  --nv-accent: #6366f1;
+  --nv-accent-2: #8b5cf6;
+  --nv-success: #10b981;
+  --nv-warning: #f59e0b;
+  --nv-danger: #ef4444;
+  --nv-radius: 12px;
+  --nv-radius-sm: 8px;
+  --nv-shadow: 0 10px 40px rgba(28, 37, 65, 0.08);
+  --nv-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --nv-space-1: 0.35rem;
+  --nv-space-2: 0.55rem;
+  --nv-space-3: 0.85rem;
+  --nv-space-4: 1.25rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--nv-font);
+  background: radial-gradient(circle at 20% 20%, #eef2ff 0, transparent 45%),
+    radial-gradient(circle at 80% 0%, #fce7f3 0, transparent 40%), var(--nv-bg);
+  color: var(--nv-text);
+  min-height: 100vh;
+}
+
+#app {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.nv-card {
+  background: var(--nv-surface);
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius);
+  box-shadow: var(--nv-shadow);
+  padding: var(--nv-space-4);
+  margin-bottom: var(--nv-space-4);
+}
+
+.nv-title {
+  margin: 0 0 var(--nv-space-3);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, var(--nv-accent), var(--nv-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.nv-btn {
+  border: none;
+  border-radius: var(--nv-radius-sm);
+  padding: var(--nv-space-2) var(--nv-space-3);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+}
+.nv-btn:active {
+  transform: scale(0.98);
+}
+.nv-btn-primary {
+  background: linear-gradient(135deg, var(--nv-accent), var(--nv-accent-2));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+.nv-btn-ghost {
+  background: var(--nv-surface-2);
+  color: var(--nv-text);
+}
+.nv-btn-danger {
+  background: #fee2e2;
+  color: var(--nv-danger);
+}
+
+.nv-input,
+.nv-select,
+.nv-textarea {
+  width: 100%;
+  border: 1px solid var(--nv-border);
+  border-radius: var(--nv-radius-sm);
+  padding: var(--nv-space-2);
+  font: inherit;
+  background: #fff;
+  color: var(--nv-text);
+}
+.nv-textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.nv-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-3);
+  align-items: flex-end;
+}
+.nv-field {
+  flex: 1 1 140px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nv-space-1);
+}
+.nv-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--nv-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nv-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--nv-space-3);
+  align-items: center;
+  margin-bottom: var(--nv-space-3);
+}
+
+.nv-error {
+  background: #fef2f2;
+  color: var(--nv-danger);
+  padding: var(--nv-space-2) var(--nv-space-3);
+  border-radius: var(--nv-radius-sm);
+  font-size: 0.9rem;
+}

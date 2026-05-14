@@ -13,6 +13,11 @@
 
 #include <gtk/gtk.h>
 
+#if defined(__has_include) && __has_include(<gtk/gtkstatusicon.h>)
+#include <gtk/gtkstatusicon.h>
+#define NV_LINUX_TRAY_HAS_STATUS_ICON 1
+#endif
+
 #ifdef NV_HAS_APPINDICATOR
 #if defined(__has_include)
 #if __has_include(<libayatana-appindicator/app-indicator.h>)
@@ -45,7 +50,7 @@ typedef struct nv_linux_tray_slot {
 #ifdef NV_HAS_APPINDICATOR
   AppIndicator *indicator;
 #else
-  GtkStatusIcon *status_icon;
+  gpointer status_icon;
 #endif
 } nv_linux_tray_slot_t;
 
@@ -63,7 +68,11 @@ static int nv_linux_tray_index_by_id(long long tray_id) {
 
 #ifndef NV_HAS_APPINDICATOR
 static int nv_linux_tray_status_icon_usable(void) {
+#if !defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
+  return 0;
+#else
   return (g_type_from_name("GtkStatusIcon") != 0) ? 1 : 0;
+#endif
 }
 #endif
 
@@ -108,17 +117,19 @@ static void nv_linux_tray_on_menu_activate(GtkMenuItem *item, gpointer user_data
 }
 
 #ifndef NV_HAS_APPINDICATOR
+#if defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
 static void nv_linux_tray_on_status_activate(GtkStatusIcon *icon, gpointer user_data) {
   int i;
 
   (void)user_data;
   for (i = 0; i < g_nv_linux_tray_count; i++) {
-    if (g_nv_linux_trays[i].status_icon == icon) {
+    if (g_nv_linux_trays[i].status_icon == (gpointer)icon) {
       nv_linux_tray_send_clicked(g_nv_linux_trays[i].window, g_nv_linux_trays[i].id);
       return;
     }
   }
 }
+#endif
 #endif
 
 static GtkMenu *nv_linux_tray_build_menu(long long tray_id, nv_window_t *w, const char **labels,
@@ -184,11 +195,13 @@ static void nv_linux_tray_remove_at(int idx) {
   }
 #else
   if (g_nv_linux_trays[idx].status_icon) {
+#if defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    gtk_status_icon_set_menu(g_nv_linux_trays[idx].status_icon, NULL);
+    gtk_status_icon_set_menu(GTK_STATUS_ICON(g_nv_linux_trays[idx].status_icon), NULL);
 #pragma GCC diagnostic pop
-    g_object_unref(g_nv_linux_trays[idx].status_icon);
+#endif
+    g_object_unref(G_OBJECT(g_nv_linux_trays[idx].status_icon));
     g_nv_linux_trays[idx].status_icon = NULL;
   }
 #endif
@@ -250,6 +263,7 @@ NV_INTERNAL NV_LINUX_TRAY_ATTR int nv_linux_tray_create(long long tray_id, const
     g_nv_linux_tray_count++;
   }
 #else
+#if defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   {
@@ -271,10 +285,15 @@ NV_INTERNAL NV_LINUX_TRAY_ATTR int nv_linux_tray_create(long long tray_id, const
 
     g_nv_linux_trays[g_nv_linux_tray_count].id = tray_id;
     g_nv_linux_trays[g_nv_linux_tray_count].window = w;
-    g_nv_linux_trays[g_nv_linux_tray_count].status_icon = icon;
+    g_nv_linux_trays[g_nv_linux_tray_count].status_icon = (gpointer)icon;
     g_nv_linux_tray_count++;
   }
 #pragma GCC diagnostic pop
+#else
+  (void)icon_path;
+  (void)tooltip;
+  return -1;
+#endif
 #endif
 
   return 0;
@@ -307,14 +326,19 @@ NV_INTERNAL NV_LINUX_TRAY_ATTR int nv_linux_tray_set_icon(long long tray_id, con
   app_indicator_set_icon_full(g_nv_linux_trays[idx].indicator, "nativeview-tray", icon_path);
   return 0;
 #else
+#if defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   if (!g_nv_linux_trays[idx].status_icon) {
     return -1;
   }
-  gtk_status_icon_set_from_file(g_nv_linux_trays[idx].status_icon, icon_path);
+  gtk_status_icon_set_from_file(GTK_STATUS_ICON(g_nv_linux_trays[idx].status_icon), icon_path);
   return 0;
 #pragma GCC diagnostic pop
+#else
+  (void)icon_path;
+  return -1;
+#endif
 #endif
 }
 
@@ -331,14 +355,20 @@ NV_INTERNAL NV_LINUX_TRAY_ATTR int nv_linux_tray_set_tooltip(long long tray_id, 
   app_indicator_set_title(g_nv_linux_trays[idx].indicator, tooltip ? tooltip : "");
   return 0;
 #else
+#if defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   if (!g_nv_linux_trays[idx].status_icon) {
     return -1;
   }
-  gtk_status_icon_set_tooltip_text(g_nv_linux_trays[idx].status_icon, tooltip ? tooltip : "");
+  gtk_status_icon_set_tooltip_text(GTK_STATUS_ICON(g_nv_linux_trays[idx].status_icon),
+                                     tooltip ? tooltip : "");
   return 0;
 #pragma GCC diagnostic pop
+#else
+  (void)tooltip;
+  return -1;
+#endif
 #endif
 }
 
@@ -366,13 +396,17 @@ NV_INTERNAL NV_LINUX_TRAY_ATTR int nv_linux_tray_set_menu(long long tray_id, con
   }
   app_indicator_set_menu(g_nv_linux_trays[idx].indicator, NULL);
 #else
+#if defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   if (!g_nv_linux_trays[idx].status_icon) {
     return -1;
   }
-  gtk_status_icon_set_menu(g_nv_linux_trays[idx].status_icon, NULL);
+  gtk_status_icon_set_menu(GTK_STATUS_ICON(g_nv_linux_trays[idx].status_icon), NULL);
 #pragma GCC diagnostic pop
+#else
+  return -1;
+#endif
 #endif
 
   menu = nv_linux_tray_build_menu(tray_id, w, labels, item_ids, count);
@@ -383,10 +417,15 @@ NV_INTERNAL NV_LINUX_TRAY_ATTR int nv_linux_tray_set_menu(long long tray_id, con
 #ifdef NV_HAS_APPINDICATOR
   app_indicator_set_menu(g_nv_linux_trays[idx].indicator, menu);
 #else
+#if defined(NV_LINUX_TRAY_HAS_STATUS_ICON)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  gtk_status_icon_set_menu(g_nv_linux_trays[idx].status_icon, menu);
+  gtk_status_icon_set_menu(GTK_STATUS_ICON(g_nv_linux_trays[idx].status_icon), GTK_WIDGET(menu));
 #pragma GCC diagnostic pop
+#else
+  gtk_widget_destroy(GTK_WIDGET(menu));
+  return -1;
+#endif
 #endif
 
   return 0;

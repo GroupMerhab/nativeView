@@ -802,7 +802,7 @@ NV_INTERNAL void nv_linux_window_set_context_menu(nv_window_t *w, const nv_menu_
     g_object_unref(act);
   }
   p->ctx_menu_actions = grp;
-  gtk_widget_insert_action_group(GTK_WIDGET(p->webview), "nvctx", G_ACTION_MAP(grp));
+  gtk_widget_insert_action_group(GTK_WIDGET(p->webview), "nvctx", G_ACTION_GROUP(grp));
 }
 
 NV_INTERNAL void nv_linux_app_set_menu(nv_window_t *w, const nv_menu_item_t *items, int count) {
@@ -1874,9 +1874,9 @@ static int nv_linux_screen_append_display(GString *out, GdkDisplay *disp, int id
   const char   *model;
   int           scale_i;
   double        scale;
-  gint          primary_idx;
   int           is_primary;
   int           id;
+  GdkMonitor   *primary_mon;
 
   mon = gdk_display_get_monitor(disp, idx);
   if (!mon) return -1;
@@ -1886,8 +1886,8 @@ static int nv_linux_screen_append_display(GString *out, GdkDisplay *disp, int id
   model = gdk_monitor_get_model(mon);
   scale_i = gdk_monitor_get_scale_factor(mon);
   scale = (scale_i > 0) ? (double)scale_i : 1.0;
-  primary_idx = gdk_display_get_primary_monitor(disp);
-  is_primary = (primary_idx >= 0 && primary_idx == idx);
+  primary_mon = gdk_display_get_primary_monitor(disp);
+  is_primary = (primary_mon != NULL && mon == primary_mon);
   id = (id_override >= 0) ? id_override : idx;
 
   if (need_comma) g_string_append_c(out, ',');
@@ -1935,8 +1935,21 @@ NV_INTERNAL char *nv_linux_screen_get_primary(void) {
   if (!disp) return NULL;
   n = gdk_display_get_n_monitors(disp);
   if (n <= 0) return NULL;
-  idx = gdk_display_get_primary_monitor(disp);
-  if (idx < 0 || idx >= n) idx = 0;
+  {
+    GdkMonitor *primary_mon = gdk_display_get_primary_monitor(disp);
+    idx = 0;
+    if (primary_mon) {
+      int found = 0;
+      for (int i = 0; i < n; i++) {
+        if (gdk_display_get_monitor(disp, i) == primary_mon) {
+          idx = (gint)i;
+          found = 1;
+          break;
+        }
+      }
+      if (!found) idx = 0;
+    }
+  }
 
   out = g_string_new(NULL);
   if (!out) return NULL;

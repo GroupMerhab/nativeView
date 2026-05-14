@@ -1,0 +1,23 @@
+[package]
+name = "rust_todo"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "rust_todo"
+path = "src/main.rs"
+required-features = ["gui"]
+
+[features]
+default = []
+gui = ["dep:nativeview"]
+
+[dependencies]
+nativeview = { path = "../../../bindings/rust", optional = true, default-features = false, features = ["link-none"] }
+rusqlite = { version = "0.32", default-features = false }
+serde_json = "1"

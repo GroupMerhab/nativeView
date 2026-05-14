@@ -36,6 +36,8 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+*.egg-info/
+.eggs/
 
 # --- Pascal / Delphi ---
 *.ppu
@@ -103,9 +105,22 @@ build_test/
 # CMake / local out-of-tree dirs (not matched by `build/` alone)
 build-*/
 cmake-build-*/
+# Dot-prefixed out-of-tree builds (not matched by `build-*/`)
+.build/
+.build-*/
 out/
 lib/
 bin/
+
+# --- Zig ---
+.zig-cache/
+zig-out/
+
+# --- Nim ---
+nimcache/
+
+# --- Rust (Cargo) ---
+bindings/rust/target/
 
 # --- Android / Gradle ---
 **/.gradle/
