@@ -201,7 +201,7 @@ if(NV_BUILD_SHARED)
       )
     endif()
   else()
-    # MinGW, Linux (GCC/Clang with GNU or LLD)
+    # MinGW, Linux (GCC/Clang with GNU or LLD), Android (Clang + LLD)
     target_link_libraries(nativeview_shared PRIVATE
       "-Wl,--whole-archive"
       nv-runtime
@@ -212,6 +212,14 @@ if(NV_BUILD_SHARED)
       "-Wl,--no-whole-archive"
     )
     target_link_libraries(nativeview_shared PRIVATE ${NV_PLATFORM_MODULE})
+    if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+      # 16 KB page-size devices (Android 15+): ELF PT_LOAD alignment must be >= 16 KB.
+      # NDK r28+ defaults to this; explicit flags keep older NDKs Play-compliant.
+      target_link_options(nativeview_shared PRIVATE
+        "-Wl,-z,max-page-size=16384"
+        "-Wl,-z,common-page-size=16384"
+      )
+    endif()
   endif()
 endif()
 
@@ -385,8 +393,8 @@ if(NOT NV_IS_MOBILE)
         -DANDROID_PLATFORM=android-24
         -DNV_BUILD_TESTS=OFF
         -DNV_BUILD_UI=OFF
-        -DNV_BUILD_SHARED=OFF
-      COMMAND ${CMAKE_COMMAND} --build ${_nv_android_smoke_dir} --target nv-platform-android
+        -DNV_BUILD_SHARED=ON
+      COMMAND ${CMAKE_COMMAND} --build ${_nv_android_smoke_dir} --target nativeview_shared
     )
   else()
     add_custom_target(android_smoke_build

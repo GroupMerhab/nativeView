@@ -49,6 +49,29 @@ if (typeof module !== "undefined") {
   g._init = _init;
 }
 
+// Shim window.__nv for pages that use the C bridge shape (nv_send → __nv._emit(event, json))
+// together with nativeview.js. Android injects only __nv.send before this bundle; without these,
+// __nv.on / __nv._emit never reach NativeView._events / _ipc (e.g. todo_app Vue + SQLite).
+if (typeof window !== "undefined" && window.__nv && typeof NativeView !== "undefined" && NativeView) {
+  window.__nv.on = function(ev, fn) {
+    return NativeView.on(ev, fn);
+  };
+  window.__nv.off = function(ev, fn) {
+    return NativeView.off(ev, fn);
+  };
+  window.__nv._emit = function(event, rawJson) {
+    var data;
+    try {
+      data = JSON.parse(rawJson);
+    } catch (e) {
+      return;
+    }
+    if (typeof _ipc !== "undefined" && _ipc && typeof _ipc.receive === "function") {
+      _ipc.receive("", JSON.stringify({ e: event, d: data }));
+    }
+  };
+}
+
 // Auto-connect: attempt handshake with C-side bridge when window.__nv is available
 (function() {
   if (typeof window !== "undefined") {

@@ -53,6 +53,11 @@ javac --release 11 -d out src/main/java/io/jamharah/nativeview/*.java
 java -Djava.library.path=/path/to/dir/with/jni ... your.Main
 ```
 
+## Testing (desktop)
+
+- **`mvn test`** — JUnit plus shared **`bindings/parity-tests`** sources (`io.jamharah.nativeview.parity.WireContractParityTest`, same sources as the Android library `test` compile).
+- With **`libnativeview_jni`** / **`libnativeview`** on **`java.library.path`**, **`NativeViewLoadTest`** asserts **`nvVersionString()`** is non-empty (otherwise the test is skipped via **`Assume`**).
+
 ## Callbacks and threads
 
 - **Listeners** (`NvMessageListener`, `NvReadyListener`, `NvCloseListener`) are stored as JNI global references. Keep the Java object reachable for as long as it is registered; pass **`null`** to clear a listener.
@@ -66,5 +71,6 @@ The checked-in **`bindings/java/CMakeLists.txt`** links **`nativeview_jni`** aga
 ## See also
 
 - `include/nv.h` — authoritative C API
+- **`docs/Android.md`** — Android embedding (`bindings/android`), if you target mobile instead of desktop JNI
 - **`docs/Nim.md`** — linking and lifecycle notes (many rules apply equally)
 - **`bindings/java/README.md`** — short path reference

@@ -1,0 +1,7 @@
+# Source-only tree: tests are compiled via `bindings/java` (mvn) or `bindings/android` (Gradle).
+# If Maven/Gradle is ever run from this directory by mistake, do not commit outputs.
+/target/
+build/
+.gradle/
+.idea/
+*.iml

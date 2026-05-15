@@ -1,0 +1,7 @@
+# Maven (desktop JNI module)
+/target/
+
+# Eclipse / ancient IDE metadata (sometimes generated when opening as project)
+.classpath
+.project
+.settings/

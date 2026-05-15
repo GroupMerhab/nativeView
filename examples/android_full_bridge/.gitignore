@@ -1,0 +1,41 @@
+# Gradle
+.gradle/
+**/build/
+
+# Local SDK path (machine-specific)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+captures/
+
+# NDK / CMake (if native code is added later)
+.cxx/
+.externalNativeBuild/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# Outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Kotlin incremental cache
+.kotlin/
+
+# Heap dumps
+*.hprof
+
+*.log
+*.tmp
+*.orig

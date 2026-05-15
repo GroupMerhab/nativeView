@@ -1,0 +1,139 @@
+plugins {
+    id 'com.android.library' version '8.5.2'
+}
+
+// Keep aligned with bindings/java/pom.xml <version>.
+def nativeviewVersion = '0.1.0'
+
+// Same property name as consumer apps (e.g. examples/todo_app/android_todo) for one ABI list.
+def nativeviewNdkAbis = (rootProject.findProperty('nativeviewJniAbis') ?: 'arm64-v8a,x86_64')
+        .toString()
+        .split(',')
+        .collect { it.trim() }
+        .findAll { !it.isEmpty() }
+if (nativeviewNdkAbis.isEmpty()) {
+    nativeviewNdkAbis = ['arm64-v8a', 'x86_64']
+}
+
+// Repo root (CMakeLists.txt, modules/) — this module lives at bindings/android.
+def nativeviewRepoRoot = file("${projectDir}/../..").canonicalFile
+def parityTestsJava = file("${projectDir}/../parity-tests/src/test/java")
+
+android {
+    namespace 'com.nativeview'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+        versionName nativeviewVersion
+        versionCode 1
+
+        ndk {
+            abiFilters(*nativeviewNdkAbis)
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments '-DNV_BUILD_SHARED=ON',
+                        '-DNV_BUILD_TESTS=OFF',
+                        '-DNV_BUILD_UI=OFF'
+                targets 'nativeview_shared'
+            }
+        }
+
+        consumerProguardFiles 'proguard-rules.pro'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    // NDK r26+ (side-by-side); install matching package via SDK Manager (AGP uses this for CMake).
+    ndkVersion '26.1.10909125'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    // 16 KB page-size devices + Play: uncompressed JNI in APK must be 16 KB zip-aligned (AGP 8.5.1+).
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file("${nativeviewRepoRoot}/CMakeLists.txt")
+        }
+    }
+
+    sourceSets {
+        main {
+            // libnativeview.so comes from externalNativeBuild (root CMake target nativeview_shared).
+            jniLibs.srcDirs = []
+            assets.srcDirs = ['src/main/assets']
+        }
+        test {
+            java.srcDir(parityTestsJava)
+        }
+        androidTest {
+            manifest.srcFile 'src/androidTest/AndroidManifest.xml'
+        }
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.biometric:biometric:1.1.0'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.12.2'
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'org.json:json:20240303'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test:core:1.5.0'
+}
+
+def releaseClassesJar = layout.buildDirectory.file('intermediates/compile_library_classes_jar/release/classes.jar')
+def releaseAar = layout.buildDirectory.file("outputs/aar/${project.name}-release.aar")
+
+tasks.register('packageNativeviewRelease', Copy) {
+    group = 'distribution'
+    description =
+            'Writes build/distributions/nativeview-android-<version>/nativeview-android.jar plus jni/<abi>/libnativeview.so from the release AAR (requires assembleRelease).'
+    dependsOn assembleRelease
+
+    doFirst {
+        if (!releaseClassesJar.get().asFile.exists()) {
+            throw new GradleException('Missing release classes.jar; run assembleRelease first.')
+        }
+        if (!releaseAar.get().asFile.exists()) {
+            throw new GradleException(
+                    'Missing release AAR; ensure :nativeview:assembleRelease completed (native CMake build included).')
+        }
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    into layout.buildDirectory.dir("distributions/nativeview-android-${nativeviewVersion}")
+    from(releaseClassesJar) {
+        rename { 'nativeview-android.jar' }
+    }
+    from({ zipTree(releaseAar.get().asFile) }) {
+        include 'jni/**/*.so'
+    }
+}

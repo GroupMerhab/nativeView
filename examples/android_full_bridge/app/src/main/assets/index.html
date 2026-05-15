@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NativeView Android demo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 8px; font-size: 14px; }
+    #log {
+      white-space: pre-wrap;
+      background: #111;
+      color: #cfc;
+      padding: 8px;
+      border-radius: 6px;
+      min-height: 120px;
+      max-height: 40vh;
+      overflow: auto;
+    }
+    button { margin: 4px 4px 4px 0; padding: 8px 10px; }
+    h1 { font-size: 1.1rem; }
+  </style>
+</head>
+<body>
+  <h1>NativeView bridge demo</h1>
+  <p>Uses <code>NativeView.invoke</code> for Android-registered ops and <code>NativeView.on</code> for push events.</p>
+  <div>
+    <button type="button" id="btn-ready">Wait for bridge</button>
+    <button type="button" id="btn-device">device.getInfo</button>
+    <button type="button" id="btn-app">app.getVersion + getPlatform + getInfo</button>
+    <button type="button" id="btn-storage">storage.set / get</button>
+    <button type="button" id="btn-net">network.getStatus</button>
+    <button type="button" id="btn-net-sub">network.onChange</button>
+    <button type="button" id="btn-fs">fs write / read / listDir</button>
+    <button type="button" id="btn-clip">clipboard write / read</button>
+    <button type="button" id="btn-notify">notification.show</button>
+    <button type="button" id="btn-notify-cancel">notification.cancel</button>
+    <button type="button" id="btn-notify-cancelall">notification.cancelAll</button>
+    <button type="button" id="btn-loc">location.get</button>
+    <button type="button" id="btn-watch">location.watch</button>
+    <button type="button" id="btn-unwatch">location.unwatch</button>
+    <button type="button" id="btn-cam">camera.takePicture</button>
+    <button type="button" id="btn-pick">camera.pickImage</button>
+    <button type="button" id="btn-bio-avail">biometric.isAvailable</button>
+    <button type="button" id="btn-bio-auth">biometric.authenticate</button>
+    <button type="button" id="btn-exit">app.exit</button>
+  </div>
+  <div id="log"></div>
+  <script>
+    function log(msg) {
+      var el = document.getElementById('log');
+      el.textContent += msg + '\n';
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function waitReady() {
+      return new Promise(function(resolve) {
+        var n = 0;
+        var t = setInterval(function() {
+          if (NativeView._state && NativeView._state.ready) {
+            clearInterval(t);
+            resolve(true);
+            return;
+          }
+          n++;
+          if (n > 200) {
+            clearInterval(t);
+            resolve(false);
+          }
+        }, 50);
+      });
+    }
+
+    var watchId = null;
+
+    NativeView.on('network.change', function (d) {
+      log('event network.change: ' + JSON.stringify(d));
+    });
+    NativeView.on('location.update', function (d) {
+      log('event location.update: ' + JSON.stringify(d));
+    });
+    NativeView.on('app.resume', function () { log('event app.resume'); });
+    NativeView.on('app.pause', function () { log('event app.pause'); });
+    NativeView.on('device.orientation', function (d) {
+      log('event device.orientation: ' + JSON.stringify(d));
+    });
+
+    async function run(label, fn) {
+      try {
+        var r = await fn();
+        log(label + ' → ' + JSON.stringify(r));
+      } catch (e) {
+        log(label + ' ERR: ' + (e && e.message ? e.message : String(e)));
+      }
+    }
+
+    document.getElementById('btn-ready').onclick = async function () {
+      var ok = await waitReady();
+      log(ok ? 'bridge ready' : 'bridge NOT ready (timeout)');
+    };
+    document.getElementById('btn-device').onclick = function () {
+      run('device.getInfo', function () { return NativeView.invoke('device.getInfo', {}); });
+    };
+    document.getElementById('btn-app').onclick = async function () {
+      await run('app.getVersion', function () { return NativeView.invoke('app.getVersion', {}); });
+      await run('app.getPlatform', function () { return NativeView.invoke('app.getPlatform', {}); });
+      await run('app.getInfo', function () { return NativeView.invoke('app.getInfo', {}); });
+    };
+    document.getElementById('btn-storage').onclick = async function () {
+      await run('storage.set', function () {
+        return NativeView.invoke('storage.set', { key: 'demoKey', value: 'hello-from-js' });
+      });
+      await run('storage.get', function () {
+        return NativeView.invoke('storage.get', { key: 'demoKey', type: 'string' });
+      });
+    };
+    document.getElementById('btn-net').onclick = function () {
+      run('network.getStatus', function () { return NativeView.invoke('network.getStatus', {}); });
+    };
+    document.getElementById('btn-net-sub').onclick = function () {
+      run('network.onChange', function () { return NativeView.invoke('network.onChange', {}); });
+    };
+    document.getElementById('btn-fs').onclick = async function () {
+      await run('fs.writeFile', function () {
+        return NativeView.invoke('fs.writeFile', {
+          path: 'nv-demo/hello.txt',
+          encoding: 'text',
+          data: 'nativeview demo\n',
+          root: 'files'
+        });
+      });
+      await run('fs.readFile', function () {
+        return NativeView.invoke('fs.readFile', { path: 'nv-demo/hello.txt', encoding: 'text', root: 'files' });
+      });
+      await run('fs.listDir', function () {
+        return NativeView.invoke('fs.listDir', { path: 'nv-demo', root: 'files' });
+      });
+    };
+    document.getElementById('btn-clip').onclick = async function () {
+      await run('clipboard.writeText', function () {
+        return NativeView.invoke('clipboard.writeText', { text: 'pasted from demo' });
+      });
+      await run('clipboard.readText', function () { return NativeView.invoke('clipboard.readText', {}); });
+    };
+    document.getElementById('btn-notify').onclick = function () {
+      run('notification.show', function () {
+        return NativeView.invoke('notification.show', { id: 42, title: 'NativeView', body: 'Hello from JS' });
+      });
+    };
+    document.getElementById('btn-notify-cancel').onclick = function () {
+      run('notification.cancel', function () { return NativeView.invoke('notification.cancel', { id: 42 }); });
+    };
+    document.getElementById('btn-notify-cancelall').onclick = function () {
+      run('notification.cancelAll', function () { return NativeView.invoke('notification.cancelAll', {}); });
+    };
+    document.getElementById('btn-loc').onclick = function () {
+      run('location.get', function () { return NativeView.invoke('location.get', {}); });
+    };
+    document.getElementById('btn-watch').onclick = async function () {
+      try {
+        await waitReady();
+        var r = await NativeView.invoke('location.watch', { minTime: 2000, minDistance: 5 });
+        log('location.watch → ' + JSON.stringify(r));
+        if (r && r.watchId != null) {
+          watchId = typeof r.watchId === 'number' ? r.watchId : parseInt(r.watchId, 10);
+        }
+      } catch (e) {
+        log('location.watch ERR: ' + (e && e.message ? e.message : String(e)));
+      }
+    };
+    document.getElementById('btn-unwatch').onclick = function () {
+      if (watchId == null) {
+        log('location.unwatch: no watchId; run watch first');
+        return;
+      }
+      run('location.unwatch', function () {
+        return NativeView.invoke('location.unwatch', { watchId: watchId });
+      });
+    };
+    document.getElementById('btn-cam').onclick = function () {
+      run('camera.takePicture', function () { return NativeView.invoke('camera.takePicture', {}); });
+    };
+    document.getElementById('btn-pick').onclick = function () {
+      run('camera.pickImage', function () { return NativeView.invoke('camera.pickImage', {}); });
+    };
+    document.getElementById('btn-bio-avail').onclick = function () {
+      run('biometric.isAvailable', function () { return NativeView.invoke('biometric.isAvailable', {}); });
+    };
+    document.getElementById('btn-bio-auth').onclick = function () {
+      run('biometric.authenticate', function () {
+        return NativeView.invoke('biometric.authenticate', {
+          title: 'Demo',
+          subtitle: 'Confirm it is you',
+          negativeButton: 'Cancel'
+        });
+      });
+    };
+    document.getElementById('btn-exit').onclick = function () {
+      NativeView.invoke('app.exit', {}).catch(function (e) {
+        log('app.exit ERR: ' + (e && e.message ? e.message : String(e)));
+      });
+    };
+  </script>
+</body>
+</html>

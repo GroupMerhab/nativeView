@@ -23,6 +23,24 @@ A cross-platform C library for embedding native WebViews in applications.
 | Android | System WebView | **In Development** |
 | iOS | WKWebView | **In Development** |
 
+## Android library (`bindings/android/`)
+
+**What it is:** Gradle **library** (`com.nativeview`) — **JNI** + **System WebView**, **`NativeViewActivity`** host, **`assets/nativeview.js`**, and built-in Java bridge ops (`device`, `storage`, `network`, …) aligned with the same JSON wire as desktop.
+
+**What it is *not*:** The desktop **`bindings/java`** JNI binding (`io.jamharah.nativeview`), not a cross-platform replacement for every desktop C op, and not a portable substitute for **`nv.h`** (Android helpers such as **`NativeViewAndroid`** are mobile-only).
+
+**Quick start:** (1) Open the app in Android Studio with the **Android SDK** and an **NDK** installed (match **`ndkVersion`** in **`bindings/android/build.gradle`**). Gradle builds **`libnativeview.so`** from the repo root **CMake** when you build the **`:nativeview`** library. Optional: copy **`.so`** files with **`bindings/android/scripts/build_nativeview_so.sh`** (`ANDROID_NDK_HOME` required). (2) `include ':nativeview'` in Gradle with `project(':nativeview').projectDir = file('…/bindings/android')`. (3) `implementation project(':nativeview')`. (4) Subclass **`NativeViewActivity`** and implement **`getContentUrl()`**. (5) Declare runtime permissions your UI uses; forward **`onRequestPermissionsResult`** / **`onActivityResult`** to **`NativeViewApp`**.
+
+**Docs:** **[docs/Android.md](docs/Android.md)** (API + ops), **[docs/Android-migration.md](docs/Android-migration.md)** (from desktop Java). **Sample:** **[examples/android_full_bridge/](examples/android_full_bridge/)**.
+
+```java
+public final class MainActivity extends NativeViewActivity {
+    @Override protected String getContentUrl() {
+        return "file:///android_asset/index.html";
+    }
+}
+```
+
 ## Building
 
 See [docs/getting-started.md](docs/getting-started.md) for full instructions.

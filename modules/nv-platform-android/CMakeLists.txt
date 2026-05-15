@@ -28,6 +28,8 @@ endif()
 
 add_library(nv-platform-android SHARED
   src/nv_android.c
+  src/nv_android_jni_hooks.c
+  src/nv_android_nativeview_jni.c
 )
 
 find_library(NV_ANDROID_LOG_LIB log)
@@ -43,4 +45,11 @@ target_link_libraries(nv-platform-android
   PUBLIC
     nv-runtime
     ${NV_ANDROID_LOG_LIB}
+)
+
+# 16 KB page-size devices (Android 15+): every JNI .so must use 16 KB ELF LOAD
+# alignment (same flags as nativeview_shared in root CMakeLists.txt).
+target_link_options(nv-platform-android PRIVATE
+  "-Wl,-z,max-page-size=16384"
+  "-Wl,-z,common-page-size=16384"
 )

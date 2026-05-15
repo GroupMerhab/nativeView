@@ -8,9 +8,13 @@ nativeView/
 ├── include/                # Public headers (stable C API surface)
 ├── modules/                # Modular implementation (each module is standalone)
 ├── bindings/pascal/        # Free Pascal import unit (nativeview.pas) for nv.h
-├── bindings/java/          # Desktop JNI (io.jamharah.nativeview); see docs/Java.md
+├── bindings/java/          # Desktop JNI (io.jamharah.nativeview); see docs/Java.md; **`mvn test`** pulls in **`bindings/parity-tests/`** (shared wire contract)
+├── bindings/parity-tests/  # Shared JVM tests (`io.jamharah.nativeview.parity`) for Android + desktop Java
+├── bindings/android/       # Android library (com.nativeview); Gradle AAR + **`gradlew`** + assets/nativeview.js; **`NativeViewActivity`** (lifecycle, push **`app.*`** / **`device.orientation`**, back, deep link, WebView state); **`NativeViewAndroid`** + **`Orientation`** (Java-only: status bar, fullscreen, orientation, IME, keep-awake—outside C/`nv.h` and portable JS); **`NativeViewWebView`** + **`NVBridge`** (`_NVBridge.post`), `NVRouter`, `NVPermissionManager`, `BridgeDispatchContext`, **`BridgeOrigin`**, **`BridgeArgs`**, **`SandboxPath`**, `ActivityResultRouter`, `AndroidBridgeRegistry` (default `device.*` / `storage.*` / `network.*` / … Java ops), **`BridgeJavaScript.emitEvent`** (full **`{e,d}`** wire for **`NativeView.on`**)
 ├── js/                     # JavaScript bridge sources, build tools, tests, types
 ├── examples/               # Small apps exercising the public C API
+│   ├── android_full_bridge/ # Android demo app (Gradle) → `bindings/android` + all default bridge ops + permissions
+│   ├── todo_app/android_todo/ # Android todo (Vue UI via Gradle npm + SQLite) → `bindings/android`; see `examples/todo_app/android_todo/README.md`
 │   └── pascal/             # FPC sample: thin .lpr + nv_* app unit (see docs/Pascal.md)
 ├── demo/                   # Larger integration demo app (manual + automated checks)
 ├── benchmarks/             # Microbenchmarks (IPC/shm)
@@ -73,6 +77,8 @@ Tests are registered via CTest at the top level and in module CMakeLists where a
 Common patterns:
 - Each test is a small executable with its own `main()` runner.
 - Full-stack tests link against the `nativeview` interface target, which pulls in the platform backend.
+- **Java bindings:** `bindings/java` uses **`mvn test`** (shared **`bindings/parity-tests`** sources + optional JNI smoke test).
+- **Android library:** `bindings/android` uses **`./gradlew test`** (Robolectric + parity sources) and **`./gradlew connectedAndroidTest`** on emulators/devices (native **`.so`** is built by Gradle **CMake** / **`externalNativeBuild`**). Release layout: **`./gradlew packageNativeviewRelease`**; full script **`bindings/android/scripts/package_release.sh`**; notes **`bindings/android/CHANGELOG.md`**.
 
 From a build directory:
 - Configure: `cmake ..`
@@ -81,6 +87,7 @@ From a build directory:
 
 ## Examples and Demo
 - `examples/` contains focused programs that exercise a narrow part of the API.
+- `examples/android_full_bridge/` is a **complete Android application** module (see **`README.md`** inside that folder): **`FragmentActivity`** host, **`file:///android_asset`** UI calling every default Java op namespace, **`NativeView.on`** for **`network.change`** / **`location.update`**, and runtime permission forwarding.
 - `examples/pascal/` contains a **Free Pascal** sample (`nv_minimal.lpr` + `nv_minimal_app.pas`) showing a **thin main file** and app logic in a unit; see **`docs/Pascal.md`**.
 - `demo/` contains a larger “mega demo” that acts as an integration harness and showcase for the full ops surface.
 
@@ -97,3 +104,5 @@ Subproject documentation lives under:
 - `nativeView/docs/project_structure.md`
 - `nativeView/docs/UI_UX_doc.md`
 - `nativeView/docs/Pascal.md` — Free Pascal / Lazarus linking, defines, and main-file alternatives
+- `nativeView/docs/Android.md` — Android library (`bindings/android`): API, ops, Gradle, JS bridge
+- `nativeView/docs/Android-migration.md` — desktop Java (`bindings/java`) → Android one-liner / entry diff

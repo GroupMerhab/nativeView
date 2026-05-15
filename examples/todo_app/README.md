@@ -9,6 +9,7 @@ Layout:
 - **`py_todo/`** — Python port (`todo_app.py` + SQLite + bridge); see [py_todo/README.md](py_todo/README.md). Run **`python3 todo_app.py`** after `py_todo/build_shared.sh` (shared `libnativeview` + embedded HTML).
 - **`java_todo/`** — Java port (`TodoApp` + SQLite + bridge); see [java_todo/README.md](java_todo/README.md). Run **`java … io.jamharah.todo.TodoApp`** after `java_todo/build_shared.sh` (shared `libnativeview` + JNI + packaged UI).
 - **`zig_todo/`** — Zig port (`todo_app.zig` + SQLite + bridge); see [zig_todo/README.md](zig_todo/README.md). Executable **`zig_todo`** via `zig_todo/build_static.sh`.
+- **`android_todo/`** — Android app (Java + SQLite + `bindings/android`); see [android_todo/README.md](android_todo/README.md). APK via `android_todo/prep_assets.sh` and `./gradlew :app:assembleDebug`.
 
 ## Build (Zig)
 
@@ -69,6 +70,19 @@ From `java_todo/`:
 Skip npm (fallback HTML only): `NV_TODO_SKIP_UI_BUILD=ON ./build_shared.sh`
 
 Unit tests: `./run_tests.sh` (requires Maven)
+
+## Build (Android)
+
+From `android_todo/`:
+
+```bash
+./prep_assets.sh
+./gradlew :app:assembleDebug
+```
+
+Skip npm (fallback HTML only): `NV_TODO_SKIP_UI_BUILD=ON ./prep_assets.sh`
+
+Unit tests: `./gradlew :app:testDebugUnitTest` (JVM / Robolectric; set **`JAVA_HOME`** to JDK **17–21** when your default JDK is newer.)
 
 ## Build (C)
 

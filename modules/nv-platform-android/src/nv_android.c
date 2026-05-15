@@ -4,7 +4,8 @@
 
 #include "nv.h"
 
-#include <jni.h>
+#include "nv_android_host.h"
+
 #include <android/log.h>
 #include <stdint.h>
 #include <string.h>
@@ -160,9 +161,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
   return JNI_VERSION_1_6;
 }
 
-JNIEXPORT void JNICALL Java_com_nativeview_androidrunner_NativeviewBridge_nativeSetHost(
-    JNIEnv* env, jclass clazz, jobject host) {
-  (void)clazz;
+void nv_android_bind_dispatch_host(JNIEnv* env, jobject host) {
   if (!env) return;
 
   if (g_nv_android_host) {
@@ -178,13 +177,41 @@ JNIEXPORT void JNICALL Java_com_nativeview_androidrunner_NativeviewBridge_native
   if (!host) return;
 
   g_nv_android_host = (*env)->NewGlobalRef(env, host);
+  if (!g_nv_android_host) return;
+
   jclass cls = (*env)->GetObjectClass(env, host);
-  if (!cls) return;
+  if (!cls) {
+    (*env)->DeleteGlobalRef(env, g_nv_android_host);
+    g_nv_android_host = NULL;
+    return;
+  }
   g_nv_android_host_cls = (*env)->NewGlobalRef(env, cls);
   (*env)->DeleteLocalRef(env, cls);
+  if (!g_nv_android_host_cls) {
+    (*env)->DeleteGlobalRef(env, g_nv_android_host);
+    g_nv_android_host = NULL;
+    return;
+  }
 
   g_nv_android_mid_dispatch = (*env)->GetMethodID(env, g_nv_android_host_cls, "dispatch",
-                                                  "(IJLjava/lang/String;Ljava/lang/String;)V");
+                                                    "(IJLjava/lang/String;Ljava/lang/String;)V");
+  if (!g_nv_android_mid_dispatch) {
+    (*env)->ExceptionClear(env);
+    if (g_nv_android_host_cls) {
+      (*env)->DeleteGlobalRef(env, g_nv_android_host_cls);
+      g_nv_android_host_cls = NULL;
+    }
+    if (g_nv_android_host) {
+      (*env)->DeleteGlobalRef(env, g_nv_android_host);
+      g_nv_android_host = NULL;
+    }
+  }
+}
+
+JNIEXPORT void JNICALL Java_com_nativeview_androidrunner_NativeviewBridge_nativeSetHost(
+    JNIEnv* env, jclass clazz, jobject host) {
+  (void)clazz;
+  nv_android_bind_dispatch_host(env, host);
 }
 
 JNIEXPORT jstring JNICALL Java_com_nativeview_androidrunner_NativeviewBridge_nativeGetInjectScript(

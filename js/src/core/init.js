@@ -11,11 +11,7 @@ var _init = {
       return;
     }
 
-    // Wire bridge emit path before sending handshake
-    if (typeof _log !== "undefined") _log.debug("init", "wiring emit");
-    w.__nv._emit = function(event, rawJson) {
-      _ipc.receive(event, rawJson);
-    };
+    // __nv._emit is wired in public/api.js (nv_send / C push uses {e,d} via _ipc.receive).
 
     // Send handshake
     if (typeof _log !== "undefined") _log.debug("init", "sending handshake");

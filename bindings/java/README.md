@@ -20,3 +20,5 @@ cmake --build . --target nativeview_jni
 ```
 
 Full guide: **`docs/Java.md`** (includes **macOS** `-XstartOnFirstThread` for JNI + AppKit).
+
+Android embedding (different artifact): **`docs/Android.md`** (`bindings/android`).

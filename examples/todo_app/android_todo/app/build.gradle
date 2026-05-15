@@ -1,0 +1,128 @@
+plugins {
+    id 'com.android.application' version '8.5.2'
+}
+
+// Comma-separated ABIs for native CMake + APK packaging (default: device + emulator).
+// Physical device only: -PnativeviewJniAbis=arm64-v8a (must match :nativeview externalNativeBuild).
+def nativeviewJniAbis = (findProperty('nativeviewJniAbis') ?: 'arm64-v8a,x86_64')
+        .toString()
+        .split(',')
+        .collect { it.trim() }
+        .findAll { !it.isEmpty() }
+if (nativeviewJniAbis.isEmpty()) {
+    nativeviewJniAbis = ['arm64-v8a', 'x86_64']
+}
+
+android {
+    namespace 'io.jamharah.todo'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.jamharah.todo'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '0.1.0'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+
+        ndk {
+            abiFilters(*nativeviewJniAbis)
+        }
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+}
+
+dependencies {
+    implementation project(':nativeview')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.code.gson:gson:2.10.1'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.12.2'
+    testImplementation 'androidx.test:core:1.5.0'
+}
+
+// --- Vue UI (examples/todo_app/ui) → app/src/main/assets/todo_ui.html ---
+// Same output as prep_assets.sh. Requires Node + npm on PATH unless skipped.
+def todoUiRoot = rootProject.file('../ui')
+def todoUiDistHtml = new File(todoUiRoot, 'dist/index.html')
+def todoUiFallback = new File(todoUiRoot, 'fallback_index.html')
+def todoUiAssetOut = layout.projectDirectory.file('src/main/assets/todo_ui.html').asFile
+def envSkipUi = (System.getenv('NV_TODO_SKIP_UI_BUILD') ?: '').trim()
+def skipTodoUiBuild =
+        project.hasProperty('skipTodoUiBuild') || envSkipUi == 'ON' || envSkipUi == '1'
+def winOs = System.getProperty('os.name', '').toLowerCase().contains('windows')
+
+tasks.register('copyTodoAppUiFallback', Copy) {
+    group = 'build'
+    description = 'Copies ../ui/fallback_index.html to assets/todo_ui.html (skip npm when -PskipTodoUiBuild or NV_TODO_SKIP_UI_BUILD=ON|1).'
+    onlyIf { skipTodoUiBuild }
+    from todoUiFallback
+    into todoUiAssetOut.parentFile
+    rename { 'todo_ui.html' }
+}
+
+tasks.register('todoAppUiNpmBuild', Exec) {
+    group = 'build'
+    description = 'Runs npm ci && npm run build in examples/todo_app/ui.'
+    onlyIf { !skipTodoUiBuild }
+    workingDir todoUiRoot
+    if (winOs) {
+        commandLine 'cmd', '/c', 'npm ci && npm run build'
+    } else {
+        commandLine 'sh', '-c', 'npm ci && npm run build'
+    }
+    inputs.file(new File(todoUiRoot, 'package.json'))
+    inputs.file(new File(todoUiRoot, 'package-lock.json'))
+    inputs.file(new File(todoUiRoot, 'index.html'))
+    inputs.file(new File(todoUiRoot, 'vite.config.js'))
+    inputs.dir(new File(todoUiRoot, 'src'))
+    outputs.file(todoUiDistHtml)
+}
+
+tasks.register('syncTodoAppUiHtml', Copy) {
+    group = 'build'
+    description = 'Copies ../ui/dist/index.html to assets/todo_ui.html after Vite build.'
+    onlyIf { !skipTodoUiBuild }
+    dependsOn todoAppUiNpmBuild
+    from todoUiDistHtml
+    into todoUiAssetOut.parentFile
+    rename { 'todo_ui.html' }
+    outputs.file(todoUiAssetOut)
+}
+
+tasks.register('prepareTodoAppUiAssets') {
+    group = 'build'
+    description =
+            'Prepares todo_ui.html from Vue (npm ci + npm run build) or fallback. Skip: -PskipTodoUiBuild or NV_TODO_SKIP_UI_BUILD=ON|1.'
+    dependsOn copyTodoAppUiFallback, syncTodoAppUiHtml
+}
+
+afterEvaluate {
+    tasks.named('preBuild').configure { dependsOn('prepareTodoAppUiAssets') }
+}

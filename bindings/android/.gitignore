@@ -1,0 +1,53 @@
+# Gradle
+.gradle/
+**/build/
+
+# Local SDK path (machine-specific; never commit)
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+.navigation/
+captures/
+
+# OS junk
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# NDK / CMake
+.cxx/
+.externalNativeBuild/
+# Staging dir used by scripts that copy CMake outputs for jniLibs / packaging
+.cmake-nativeview/
+
+# Prebuilt native libs from CI or local CMake (keep ABI dirs via .gitkeep)
+src/main/jniLibs/**/*.so
+
+# Build outputs (also under **/build/; listed for clarity when cleaning trees)
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Heap dumps from studio / tests
+*.hprof
+
+# Logs & merge debris
+*.log
+*.tmp
+*.orig
+
+# Signing secrets (never commit)
+*.jks
+*.keystore
+signing.properties
+keystore.properties
+
+# Kotlin incremental cache (harmless if the module stays Java-only)
+.kotlin/

@@ -20,6 +20,7 @@ IGNORED_DIRS = {
     ".vscode",
     "build",
     "node_modules",
+    "sqlite",
 }
 
 ALLOWLIST = {
@@ -31,6 +32,7 @@ ALLOWLIST = {
     "modules/nv-ipc/src/nv_ipc.c",
     "modules/nv-ipc/tests/test_ipc.c",
     "modules/nv-platform-win/src/nv_win_tray.c",
+    "modules/nv-platform-linux/src/nv_linux_tray.c",
     "modules/nv-runtime/src/nv_window.c",
     "modules/nv-core/tests/test_json.c",
     "modules/nv-core/tests/test_json_compose.c",
@@ -47,6 +49,8 @@ def iter_source_files(root: str):
             if d not in IGNORED_DIRS
             and not d.startswith(".")
             and not d.startswith("cmake-build")
+            # Local out-of-tree CMake dirs (e.g. build-zig-todo-static/)
+            and not d.startswith("build-")
         ]
         for filename in filenames:
             _, ext = os.path.splitext(filename)
