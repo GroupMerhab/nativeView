@@ -69,13 +69,13 @@ static int nv_win_png_ihdr_dims(const uint8_t *p, size_t n, int *w, int *h) {
   return 0;
 }
 
-static int nv_win_clip_read_png_handle(HANDLE h, std::vector<uint8_t> *png, int *w, int *h) {
-  SIZE_T sz = GlobalSize(h);
+static int nv_win_clip_read_png_handle(HANDLE hg, std::vector<uint8_t> *png, int *w, int *h) {
+  SIZE_T sz = GlobalSize(hg);
   if (sz == 0 || sz > 256u * 1024u * 1024u) return -1;
-  const uint8_t *p = (const uint8_t *)GlobalLock(h);
+  const uint8_t *p = (const uint8_t *)GlobalLock(hg);
   if (!p) return -1;
   png->assign(p, p + sz);
-  GlobalUnlock(h);
+  GlobalUnlock(hg);
   return nv_win_png_ihdr_dims(png->data(), png->size(), w, h);
 }
 
@@ -173,8 +173,8 @@ static int nv_win_dib_to_png(HANDLE hg, std::vector<uint8_t> *pngOut, int *w, in
 
 NV_WIN_CLIPIMG_ATTR char *nv_win_clipboard_read_image(int *out_w, int *out_h) {
   std::vector<uint8_t> png;
-  int w = 0, h = 0;
-  HANDLE h = nullptr;
+  int w = 0, hgt = 0;
+  HANDLE clip = nullptr;
   UINT fmtPng;
 
   if (out_w) *out_w = 0;
@@ -184,13 +184,13 @@ NV_WIN_CLIPIMG_ATTR char *nv_win_clipboard_read_image(int *out_w, int *out_h) {
   if (!OpenClipboard(nullptr)) return nullptr;
 
   fmtPng = RegisterClipboardFormatA("PNG");
-  if (fmtPng != 0 && (h = GetClipboardData(fmtPng)) != nullptr) {
-    if (nv_win_clip_read_png_handle(h, &png, &w, &h) != 0) {
+  if (fmtPng != 0 && (clip = GetClipboardData(fmtPng)) != nullptr) {
+    if (nv_win_clip_read_png_handle(clip, &png, &w, &hgt) != 0) {
       CloseClipboard();
       return nullptr;
     }
-  } else if ((h = GetClipboardData(CF_DIBV5)) != nullptr || (h = GetClipboardData(CF_DIB)) != nullptr) {
-    if (nv_win_dib_to_png(h, &png, &w, &h) != 0) {
+  } else if ((clip = GetClipboardData(CF_DIBV5)) != nullptr || (clip = GetClipboardData(CF_DIB)) != nullptr) {
+    if (nv_win_dib_to_png(clip, &png, &w, &hgt) != 0) {
       CloseClipboard();
       return nullptr;
     }
@@ -200,7 +200,7 @@ NV_WIN_CLIPIMG_ATTR char *nv_win_clipboard_read_image(int *out_w, int *out_h) {
   }
   CloseClipboard();
 
-  if (png.empty() || w <= 0 || h <= 0) return nullptr;
+  if (png.empty() || w <= 0 || hgt <= 0) return nullptr;
 
   size_t encb = nv_base64_encode_bound(png.size());
   char *out = (char *)malloc(encb);
@@ -209,7 +209,7 @@ NV_WIN_CLIPIMG_ATTR char *nv_win_clipboard_read_image(int *out_w, int *out_h) {
     return nullptr;
   }
   if (out_w) *out_w = w;
-  if (out_h) *out_h = h;
+  if (out_h) *out_h = hgt;
   return out;
 }
 

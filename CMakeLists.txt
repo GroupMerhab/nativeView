@@ -57,6 +57,7 @@ if(NOT MSVC)
 else()
   set(CMAKE_C_FLAGS_DEBUG "/Zi /Od /DNV_DEBUG")
   set(CMAKE_C_FLAGS_RELEASE "/O2 /DNDEBUG")
+  add_compile_options($<$<COMPILE_LANGUAGE:C>:/experimental:c11atomics>)
 endif()
 
 # Platform-specific linker flags for Release

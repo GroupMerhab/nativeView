@@ -39,6 +39,21 @@
 #define NV_WIN_TOAST_SDK 0
 #endif
 
+#if NV_WIN_TOAST_SDK
+DEFINE_GUID(IID___x_ABI_CWindows_CUI_CNotifications_CIToastNotification2, 0x9dfb9fd1, 0x143a, 0x490e, 0x90, 0xbf, 0xb9,
+            0xfb, 0xa7, 0x13, 0x2d, 0xe7);
+DEFINE_GUID(IID___x_ABI_CWindows_CUI_CNotifications_CIToastNotificationFactory, 0x04124b20, 0x82c6, 0x4229, 0xb1, 0x09,
+            0xfd, 0x9e, 0xd4, 0x66, 0x2b, 0x53);
+DEFINE_GUID(IID___x_ABI_CWindows_CUI_CNotifications_CIToastNotificationManagerStatics, 0x50ac103f, 0xd235, 0x4598, 0xbb,
+            0xef, 0x98, 0xfe, 0x4d, 0x1a, 0x3a, 0xd4);
+DEFINE_GUID(IID___x_ABI_CWindows_CUI_CNotifications_CIToastNotificationManagerStatics2, 0x7ab93c52, 0x0e48, 0x4750, 0xba,
+            0x9d, 0x1a, 0x41, 0x13, 0x98, 0x18, 0x47);
+DEFINE_GUID(IID___x_ABI_CWindows_CData_CXml_CDom_CIXmlDocument, 0xf7f3a506, 0x1e87, 0x42d6, 0xbc, 0xfb, 0xb8, 0xc8,
+            0x09, 0xfa, 0x54, 0x94);
+DEFINE_GUID(IID___x_ABI_CWindows_CData_CXml_CDom_CIXmlDocumentIO, 0x6cd0e74e, 0xee65, 0x4489, 0x9e, 0xbf, 0xca, 0x43,
+            0xe8, 0x7b, 0xa6, 0x37);
+#endif
+
 #define NV_WIN_TOAST_AUMID L"Elkotobi.NativeView"
 #define NV_WIN_TOAST_SHORTCUT_NAME L"NativeView.lnk"
 
@@ -127,11 +142,10 @@ static HRESULT nv_win_notif_ensure_shortcut(void) {
   {
     PROPVARIANT pv;
     PropVariantInit(&pv);
-    hr = InitPropVariantFromString(NV_WIN_TOAST_AUMID, &pv);
-    if (SUCCEEDED(hr)) {
-      hr = IPropertyStore_SetValue(store, &PKEY_AppUserModel_ID, &pv);
-      PropVariantClear(&pv);
-    }
+    pv.vt = VT_LPWSTR;
+    hr = SHStrDupW(NV_WIN_TOAST_AUMID, &pv.pwszVal);
+    if (SUCCEEDED(hr)) hr = IPropertyStore_SetValue(store, &PKEY_AppUserModel_ID, &pv);
+    PropVariantClear(&pv);
   }
   if (FAILED(hr)) goto done;
 
@@ -212,7 +226,7 @@ NV_INTERNAL NV_WIN_NOTIF_ATTR int nv_win_notification_show(long long id, const c
     char xml8[4096];
     WCHAR* xmlW = NULL;
     WCHAR tagBuf[32];
-    __x_ABI_CWindows_CUI_CNotifications_NotificationSetting setting;
+    __x_ABI_CWindows_CUI_CNotifications_CNotificationSetting setting;
     int rc = -2;
     int nxml;
 
@@ -257,7 +271,7 @@ NV_INTERNAL NV_WIN_NOTIF_ATTR int nv_win_notification_show(long long id, const c
 
     hr = __x_ABI_CWindows_CUI_CNotifications_CIToastNotifier_get_Setting(notifier, &setting);
     if (FAILED(hr)) goto cleanup;
-    if (setting != __x_ABI_CWindows_CUI_CNotifications_NotificationSetting_Enabled) {
+    if (setting != NotificationSetting_Enabled) {
       rc = -1;
       goto cleanup;
     }
