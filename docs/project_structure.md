@@ -8,13 +8,17 @@ nativeView/
 ├── include/                # Public headers (stable C API surface)
 ├── modules/                # Modular implementation (each module is standalone)
 ├── bindings/pascal/        # Free Pascal import unit (nativeview.pas) for nv.h
+├── bindings/swift/         # SwiftPM (CNativeview + Nativeview); see docs/Swift.md; nv_pub → include/
+├── bindings/ios/           # SwiftPM **NativeViewIOS** (UIKit/WKWebView) + **`NativeView.xcframework`** (C module **NativeView**; build via **`bindings/ios/scripts/create_nativeview_xcframework.sh`**) + **`libs/`** static slices + CocoaPods **`NativeViewIOS.podspec`**; bundled **`nativeview.js`** (same as Android assets); default bridge ops via **`IOSDefaultBridge`** + per-namespace `*Ops.swift` (call **`NativeViewApp.registerDefaultIOSHandlers()`**); **`NativeViewApp`** lifecycle / deep-link push + origin allow list / wire dispatch; **`NVBridgeOrigin`**, **`NVJsonWire`**, **`NVRejectCode`**, **`NVJavaScriptStringEncoding`** (args + JS literal safety); **`NativeViewViewController`** hosts **`NativeViewWebView`** and reads **`NativeViewIOS`** (iOS-only UIKit shell in **`Helpers/NativeViewIOS.swift`**) for status bar, orientation mask, safe-area pinning, and nav pop-gesture coordination; XCTest **`Tests/NativeViewIOSTests/`** (`BridgeTests`, `BridgeIntegrationTests`, `OpsTests`, `PermissionTests`, `ParityTests`, `AppStoreComplianceTests`, `AppLifecycleTests`, `NativeViewIOSPlatformTests`, `TestHelpers`); Example **`Example/ExampleApp.xcodeproj`** (bundled **`index.html`** + **`Info.plist`** URL scheme `nativeview-example://`; **`loadUrl`** / **`loadHtml`** via toolbar)
 ├── bindings/java/          # Desktop JNI (io.jamharah.nativeview); see docs/Java.md; **`mvn test`** pulls in **`bindings/parity-tests/`** (shared wire contract)
 ├── bindings/parity-tests/  # Shared JVM tests (`io.jamharah.nativeview.parity`) for Android + desktop Java
-├── bindings/android/       # Android library (com.nativeview); Gradle AAR + **`gradlew`** + assets/nativeview.js; **`NativeViewActivity`** (lifecycle, push **`app.*`** / **`device.orientation`**, back, deep link, WebView state); **`NativeViewAndroid`** + **`Orientation`** (Java-only: status bar, fullscreen, orientation, IME, keep-awake—outside C/`nv.h` and portable JS); **`NativeViewWebView`** + **`NVBridge`** (`_NVBridge.post`), `NVRouter`, `NVPermissionManager`, `BridgeDispatchContext`, **`BridgeOrigin`**, **`BridgeArgs`**, **`SandboxPath`**, `ActivityResultRouter`, `AndroidBridgeRegistry` (default `device.*` / `storage.*` / `network.*` / … Java ops), **`BridgeJavaScript.emitEvent`** (full **`{e,d}`** wire for **`NativeView.on`**)
+├── bindings/android/       # Android library (com.nativeview); Gradle AAR + **`gradlew`** + assets/nativeview.js; **`NativeViewActivity`** (lifecycle, push **`app.*`** / **`device.orientation`**, back, deep link, WebView state); **`NativeViewAndroid`** + **`Orientation`** (Java-only: status bar, fullscreen, orientation, IME, keep-awake—outside C/`nv.h` and portable JS); **`NativeViewWebView`** + **`NVBridge`** (`_NVBridge.post`), `NVRouter`, `NVPermissionManager`, `BridgeDispatchContext`, **`BridgeOrigin`**, **`BridgeArgs`**, **`SandboxPath`**, `ActivityResultRouter`, `AndroidBridgeRegistry` (default `device.*` / `storage.*` / `network.*` / … Java ops), **`BridgeJavaScript.emitEvent`** (full **`{e,d}`** wire for **`NativeView.on`**); in-tree sample app **`Example/`** (composite **`settings.gradle`** → parent **`..`**, **`app`** module + bundled **`index.html`**, **`example.echo`**, deep link **`nativeview-example://`**, toolbar reload demos; **currently broken** — **`app.handshake`** timeouts; see **`bindings/android/Example/README.md`**; use **`examples/android_full_bridge/`** for a working demo)
 ├── js/                     # JavaScript bridge sources, build tools, tests, types
 ├── examples/               # Small apps exercising the public C API
 │   ├── android_full_bridge/ # Android demo app (Gradle) → `bindings/android` + all default bridge ops + permissions
 │   ├── todo_app/android_todo/ # Android todo (Vue UI via Gradle npm + SQLite) → `bindings/android`; see `examples/todo_app/android_todo/README.md`
+│   ├── todo_app/swift_todo/   # Swift todo (SwiftPM `TodoBackend` + `app/` executable; see `examples/todo_app/swift_todo/README.md`)
+│   ├── swift/                # Swift minimal + build_static.sh (see docs/Swift.md)
 │   └── pascal/             # FPC sample: thin .lpr + nv_* app unit (see docs/Pascal.md)
 ├── demo/                   # Larger integration demo app (manual + automated checks)
 ├── benchmarks/             # Microbenchmarks (IPC/shm)
@@ -78,6 +82,7 @@ Common patterns:
 - Each test is a small executable with its own `main()` runner.
 - Full-stack tests link against the `nativeview` interface target, which pulls in the platform backend.
 - **Java bindings:** `bindings/java` uses **`mvn test`** (shared **`bindings/parity-tests`** sources + optional JNI smoke test).
+- **Swift binding:** `bindings/swift` — **`swift build`** (SwiftPM) compiles **`Nativeview`** without linking **`libnativeview`**; **`examples/swift/build_static.sh`** performs a full static link for **`examples/swift/minimal`**.
 - **Android library:** `bindings/android` uses **`./gradlew test`** (Robolectric + parity sources) and **`./gradlew connectedAndroidTest`** on emulators/devices (native **`.so`** is built by Gradle **CMake** / **`externalNativeBuild`**). Release layout: **`./gradlew packageNativeviewRelease`**; full script **`bindings/android/scripts/package_release.sh`**; notes **`bindings/android/CHANGELOG.md`**.
 
 From a build directory:
@@ -89,6 +94,7 @@ From a build directory:
 - `examples/` contains focused programs that exercise a narrow part of the API.
 - `examples/android_full_bridge/` is a **complete Android application** module (see **`README.md`** inside that folder): **`FragmentActivity`** host, **`file:///android_asset`** UI calling every default Java op namespace, **`NativeView.on`** for **`network.change`** / **`location.update`**, and runtime permission forwarding.
 - `examples/pascal/` contains a **Free Pascal** sample (`nv_minimal.lpr` + `nv_minimal_app.pas`) showing a **thin main file** and app logic in a unit; see **`docs/Pascal.md`**.
+- `examples/swift/` contains a **SwiftPM** minimal sample and **`build_static.sh`**; see **`docs/Swift.md`**.
 - `demo/` contains a larger “mega demo” that acts as an integration harness and showcase for the full ops surface.
 
 ## Tooling

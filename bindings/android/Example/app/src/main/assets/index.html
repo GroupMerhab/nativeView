@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NativeView Android Example</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 12px 12px 32px; background: #f2f2f7; color: #1c1c1e; }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    h2 { font-size: 1rem; margin: 20px 0 8px; border-bottom: 1px solid #c7c7cc; padding-bottom: 4px; }
+    p.hint { font-size: 0.85rem; color: #3a3a3c; margin: 0 0 12px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+    button {
+      padding: 8px 12px; border-radius: 10px; border: none;
+      background: #007aff; color: #fff; font-size: 0.85rem;
+    }
+    button.secondary { background: #8e8e93; }
+    button.warn { background: #ff3b30; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    pre#log {
+      margin-top: 16px; padding: 12px; background: #1c1c1e; color: #e5e5ea;
+      border-radius: 10px; font-size: 12px; overflow: auto; max-height: 42vh; white-space: pre-wrap; word-break: break-word;
+    }
+    code { background: #e5e5ea; padding: 1px 5px; border-radius: 4px; font-size: 0.8em; }
+  </style>
+</head>
+<body>
+  <h1>NativeView Android Example</h1>
+  <p class="hint">
+    Use the action bar overflow menu to switch between bundled <code>index.html</code> (<code>load_url</code>)
+    and a minimal <code>load_html</code> demo. Deep link: <code>nativeview-example://demo</code> (adb:
+    <code>adb shell am start -a android.intent.action.VIEW -d "nativeview-example://demo" com.nativeview.example</code>).
+    <code>NativeView.send</code> lines appear in Logcat under tag <code>NativeViewExample</code>.
+    Until <code>app.handshake</code> succeeds, other <code>NativeView.invoke</code> calls return
+    <strong>bridge not ready</strong> (<code>ERR_NOT_READY</code>) by design.
+  </p>
+  <p class="hint" id="bridgeStatus">Waiting for injected <code>nativeview.js</code> and C handshake…</p>
+
+  <h2>JS bridge — <code>NativeView.invoke</code></h2>
+  <div class="grid">
+    <button type="button" id="btnHandshake">app.handshake (wire)</button>
+    <button type="button" id="btnEcho">example.echo (Java handler)</button>
+  </div>
+
+  <h2>App &amp; device</h2>
+  <div class="grid">
+    <button type="button" id="btnAppVer">app.getVersion</button>
+    <button type="button" id="btnAppPlat">app.getPlatform</button>
+    <button type="button" id="btnAppInfo">app.getInfo</button>
+    <button type="button" id="btnDevInfo">device.getInfo</button>
+    <button type="button" class="secondary" id="btnAppExit">app.exit</button>
+  </div>
+
+  <h2>Storage</h2>
+  <div class="grid">
+    <button type="button" id="btnStSet">storage.set</button>
+    <button type="button" id="btnStGet">storage.get</button>
+    <button type="button" id="btnStRm">storage.remove</button>
+    <button type="button" id="btnStClr">storage.clear</button>
+  </div>
+
+  <h2>Network</h2>
+  <div class="grid">
+    <button type="button" id="btnNet">network.getStatus</button>
+    <button type="button" id="btnNetSub">network.onChange (subscribe)</button>
+  </div>
+
+  <h2>Clipboard &amp; filesystem</h2>
+  <div class="grid">
+    <button type="button" id="btnClipW">clipboard.writeText</button>
+    <button type="button" id="btnClipR">clipboard.readText</button>
+    <button type="button" id="btnFs">fs write / read / list / delete</button>
+  </div>
+
+  <h2>Notifications</h2>
+  <p class="hint">First run may prompt for notification permission.</p>
+  <div class="grid">
+    <button type="button" id="btnNotShow">notification.show</button>
+    <button type="button" id="btnNotCancel">notification.cancel</button>
+    <button type="button" id="btnNotCancelAll">notification.cancelAll</button>
+  </div>
+
+  <h2>Camera &amp; photos</h2>
+  <p class="hint">Expect system prompts for camera / photo library.</p>
+  <div class="grid">
+    <button type="button" id="btnCam">camera.takePicture</button>
+    <button type="button" id="btnPick">camera.pickImage</button>
+  </div>
+
+  <h2>Location</h2>
+  <p class="hint"><code>location.watch</code> pushes <code>location.update</code> events.</p>
+  <div class="grid">
+    <button type="button" id="btnLocGet">location.get</button>
+    <button type="button" id="btnLocWatch">location.watch</button>
+    <button type="button" id="btnLocUn">location.unwatch</button>
+  </div>
+
+  <h2>Biometric</h2>
+  <div class="grid">
+    <button type="button" id="btnBioAvail">biometric.isAvailable</button>
+    <button type="button" id="btnBioAuth">biometric.authenticate</button>
+  </div>
+
+  <h2>JS → native push (<code>NativeView.send</code>, seq 0)</h2>
+  <p class="hint">Delivered to Java <code>NativeViewWindow.on_message</code> (see Logcat).</p>
+  <div class="grid">
+    <button type="button" class="warn" id="btnSend">NativeView.send('example.webEvent', …)</button>
+  </div>
+
+  <h2>Log</h2>
+  <pre id="log"></pre>
+
+  <script>
+    var logEl = document.getElementById('log');
+    var bridgeStatusEl = document.getElementById('bridgeStatus');
+    function log(line) {
+      logEl.textContent += line + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function j(x) {
+      try { return JSON.stringify(x); } catch (e) { return String(x); }
+    }
+
+    function setNonHandshakeDisabled(disabled) {
+      var ids = [
+        'btnEcho', 'btnAppVer', 'btnAppPlat', 'btnAppInfo', 'btnDevInfo', 'btnAppExit',
+        'btnStSet', 'btnStGet', 'btnStRm', 'btnStClr', 'btnNet', 'btnNetSub',
+        'btnClipW', 'btnClipR', 'btnFs', 'btnNotShow', 'btnNotCancel', 'btnNotCancelAll',
+        'btnCam', 'btnPick', 'btnLocGet', 'btnLocWatch', 'btnLocUn', 'btnBioAvail', 'btnBioAuth', 'btnSend'
+      ];
+      for (var i = 0; i < ids.length; i++) {
+        var el = document.getElementById(ids[i]);
+        if (el) el.disabled = disabled;
+      }
+    }
+
+    function isBridgeReady() {
+      return typeof NativeView !== 'undefined' && NativeView._state && NativeView._state.ready;
+    }
+
+    function waitForBridgeReady(maxMs, onDone) {
+      var start = Date.now();
+      function tick() {
+        if (isBridgeReady()) {
+          onDone(true);
+          return;
+        }
+        if (Date.now() - start >= maxMs) {
+          onDone(false);
+          return;
+        }
+        setTimeout(tick, 50);
+      }
+      tick();
+    }
+
+    async function safeInvoke(label, method, data) {
+      try {
+        var r = await NativeView.invoke(method, data == null ? {} : data);
+        log(label + ' → ' + j(r));
+      } catch (e) {
+        log(label + ' ERROR → ' + (e && e.message ? e.message : String(e)));
+      }
+    }
+
+    setNonHandshakeDisabled(true);
+
+    document.getElementById('btnHandshake').onclick = function() {
+      var payload = { wireVersion: 1 };
+      if (typeof NativeView !== 'undefined' && NativeView.version != null) {
+        payload.jsVersion = NativeView.version;
+        payload.wireVersion = NativeView.wireVersion != null ? NativeView.wireVersion : 1;
+      }
+      safeInvoke('app.handshake', 'app.handshake', payload);
+    };
+    document.getElementById('btnEcho').onclick = function() {
+      safeInvoke('example.echo', 'example.echo', { message: 'Hello from invoke()' });
+    };
+    document.getElementById('btnAppVer').onclick = function() { safeInvoke('app.getVersion', 'app.getVersion', {}); };
+    document.getElementById('btnAppPlat').onclick = function() { safeInvoke('app.getPlatform', 'app.getPlatform', {}); };
+    document.getElementById('btnAppInfo').onclick = function() { safeInvoke('app.getInfo', 'app.getInfo', {}); };
+    document.getElementById('btnDevInfo').onclick = function() { safeInvoke('device.getInfo', 'device.getInfo', {}); };
+    document.getElementById('btnAppExit').onclick = function() { safeInvoke('app.exit', 'app.exit', {}); };
+
+    var stKey = 'nv_example_key';
+    document.getElementById('btnStSet').onclick = function() {
+      safeInvoke('storage.set', 'storage.set', { key: stKey, value: 'example-value' });
+    };
+    document.getElementById('btnStGet').onclick = function() {
+      safeInvoke('storage.get', 'storage.get', { key: stKey, type: 'string' });
+    };
+    document.getElementById('btnStRm').onclick = function() {
+      safeInvoke('storage.remove', 'storage.remove', { key: stKey });
+    };
+    document.getElementById('btnStClr').onclick = function() {
+      safeInvoke('storage.clear', 'storage.clear', {});
+    };
+
+    document.getElementById('btnNet').onclick = function() {
+      safeInvoke('network.getStatus', 'network.getStatus', {});
+    };
+    document.getElementById('btnNetSub').onclick = function() {
+      safeInvoke('network.onChange', 'network.onChange', {});
+    };
+
+    document.getElementById('btnClipW').onclick = function() {
+      safeInvoke('clipboard.writeText', 'clipboard.writeText', { text: 'NativeView example ' + Date.now() });
+    };
+    document.getElementById('btnClipR').onclick = function() {
+      safeInvoke('clipboard.readText', 'clipboard.readText', {});
+    };
+
+    document.getElementById('btnFs').onclick = async function() {
+      var name = 'nv_demo_' + Date.now() + '.txt';
+      await safeInvoke('fs.writeFile', 'fs.writeFile', { path: name, encoding: 'text', data: 'hello-fs' });
+      await safeInvoke('fs.readFile', 'fs.readFile', { path: name, encoding: 'text' });
+      await safeInvoke('fs.exists', 'fs.exists', { path: name });
+      await safeInvoke('fs.listDir', 'fs.listDir', { path: '.' });
+      await safeInvoke('fs.deleteFile', 'fs.deleteFile', { path: name });
+    };
+
+    document.getElementById('btnNotShow').onclick = function() {
+      safeInvoke('notification.show', 'notification.show', { id: 'nv-demo', title: 'NativeView', body: 'Example local notification' });
+    };
+    document.getElementById('btnNotCancel').onclick = function() {
+      safeInvoke('notification.cancel', 'notification.cancel', { id: 'nv-demo' });
+    };
+    document.getElementById('btnNotCancelAll').onclick = function() {
+      safeInvoke('notification.cancelAll', 'notification.cancelAll', {});
+    };
+
+    document.getElementById('btnCam').onclick = function() {
+      safeInvoke('camera.takePicture', 'camera.takePicture', { quality: 80, front: false });
+    };
+    document.getElementById('btnPick').onclick = function() {
+      safeInvoke('camera.pickImage', 'camera.pickImage', { quality: 80 });
+    };
+
+    var watchId = null;
+    document.getElementById('btnLocGet').onclick = function() {
+      safeInvoke('location.get', 'location.get', {});
+    };
+    document.getElementById('btnLocWatch').onclick = async function() {
+      try {
+        var r = await NativeView.invoke('location.watch', {});
+        watchId = r && r.watchId != null ? r.watchId : null;
+        log('location.watch → ' + j(r));
+      } catch (e) {
+        log('location.watch ERROR → ' + (e && e.message ? e.message : String(e)));
+      }
+    };
+    document.getElementById('btnLocUn').onclick = async function() {
+      var payload = watchId != null ? { watchId: watchId } : {};
+      await safeInvoke('location.unwatch', 'location.unwatch', payload);
+      watchId = null;
+    };
+
+    document.getElementById('btnBioAvail').onclick = function() {
+      safeInvoke('biometric.isAvailable', 'biometric.isAvailable', {});
+    };
+    document.getElementById('btnBioAuth').onclick = function() {
+      safeInvoke('biometric.authenticate', 'biometric.authenticate', { title: 'Example app sign-in' });
+    };
+
+    document.getElementById('btnSend').onclick = function() {
+      try {
+        NativeView.send('example.webEvent', { source: 'index.html', t: Date.now() });
+        log('NativeView.send dispatched (check Logcat for on_message)');
+      } catch (e) {
+        log('send error: ' + e);
+      }
+    };
+
+    function registerPushListeners() {
+      if (typeof NativeView === 'undefined' || typeof NativeView.on !== 'function') {
+        return;
+      }
+      ['app.resume', 'app.pause', 'app.destroy', 'app.deeplink', 'device.orientation', 'network.change', 'location.update']
+        .forEach(function(ev) {
+          NativeView.on(ev, function(d) {
+            log('EVENT ' + ev + ' → ' + j(d));
+          });
+        });
+      log('Subscribed to: app.resume, app.pause, app.destroy, app.deeplink, device.orientation, network.change, location.update');
+    }
+
+    waitForBridgeReady(12000, function(ok) {
+      setNonHandshakeDisabled(false);
+      if (bridgeStatusEl) {
+        bridgeStatusEl.textContent = ok
+          ? 'Bridge ready — you can use all invoke buttons (handshake completed).'
+          : 'Handshake did not complete in time: other invokes still report "bridge not ready". Rebuild the app with current nativeview.js, or tap app.handshake again.';
+      }
+      if (ok) {
+        log('Bridge ready (NativeView._state.ready).');
+      } else {
+        log('WARNING: bridge not ready after wait — check app.handshake / nativeview.js bundle.');
+      }
+      registerPushListeners();
+    });
+  </script>
+</body>
+</html>

@@ -137,3 +137,35 @@ tasks.register('packageNativeviewRelease', Copy) {
         include 'jni/**/*.so'
     }
 }
+
+/*
+ * Parity with iOS ExampleApp (local NativeViewIOS Swift package rebuilds with the archive):
+ *  - externalNativeBuild tasks (except Clean) are never UP-TO-DATE so libnativeview.so is rebuilt on assemble.
+ *  - nativeviewJsBundle runs tools/js_build.py into assets unless nativeview.skipJsBundle=true.
+ */
+def nvBundledJsRel = 'bindings/android/src/main/assets/nativeview.js'
+
+tasks.register('nativeviewJsBundle', Exec) {
+    group = 'nativeview'
+    description = 'Write bindings/android/src/main/assets/nativeview.js from js/src/ via tools/js_build.py.'
+    workingDir nativeviewRepoRoot
+    commandLine 'python3', 'tools/js_build.py', '--out', nvBundledJsRel
+    inputs.dir("${nativeviewRepoRoot}/js/src")
+    inputs.file("${nativeviewRepoRoot}/js/src/build.manifest")
+    inputs.file("${nativeviewRepoRoot}/tools/js_build.py")
+    outputs.file("${nativeviewRepoRoot}/${nvBundledJsRel}")
+}
+
+afterEvaluate {
+    boolean skipJsBundle = (findProperty('nativeview.skipJsBundle') ?: 'false').toString().equalsIgnoreCase('true')
+    if (!skipJsBundle) {
+        tasks.named('preBuild').configure { dependsOn(tasks.named('nativeviewJsBundle')) }
+    }
+
+    tasks.configureEach { task ->
+        String n = task.name
+        if (n.startsWith('externalNativeBuild') && !n.contains('Clean')) {
+            task.outputs.upToDateWhen { false }
+        }
+    }
+}

@@ -11,6 +11,7 @@ import com.nativeview.bridge.BridgeDispatchContext;
 import com.nativeview.bridge.BridgeOrigin;
 import com.nativeview.bridge.NVPermissionManager;
 import com.nativeview.bridge.NVRouter;
+import com.nativeview.jni.NativeViewHost;
 import com.nativeview.jni.NativeViewJNI;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
@@ -45,6 +46,9 @@ public class NativeViewApp {
         this.appContext = context.getApplicationContext();
         NativeViewJNI.ensureLoaded();
         NativeViewJNI.nativeInit(context);
+        if (context instanceof NativeViewHost) {
+            NativeViewJNI.nativeBindDispatchHost((NativeViewHost) context);
+        }
         synchronized (allowedOrigins) {
             String fileOrigin = BridgeOrigin.normalizeAllowedOrigin("file://");
             if (fileOrigin != null) {
@@ -148,6 +152,9 @@ public class NativeViewApp {
      */
     public void setPermissionActivity(Activity activity) {
         permissionActivity = new WeakReference<>(activity);
+        if (activity instanceof NativeViewHost) {
+            NativeViewJNI.nativeBindDispatchHost((NativeViewHost) activity);
+        }
     }
 
     /**

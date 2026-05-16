@@ -20,13 +20,15 @@ Java/Kotlin library under **`bindings/android/`** (`com.nativeview`): System **W
 
 ## Quick start
 
-1. **Native libs:** Gradle builds **`libnativeview.so`** from the repo root **`CMakeLists.txt`** (`nativeview_shared`) when you **`implementation project(':nativeview')`** — install an **NDK** matching **`bindings/android/build.gradle`** **`ndkVersion`** via SDK Manager. Optional offline/script build: **`bindings/android/scripts/build_nativeview_so.sh`** (requires **`ANDROID_NDK_HOME`**) still copies into **`src/main/jniLibs/`** if you are not using Gradle’s CMake path.
+1. **Native libs:** Gradle builds **`libnativeview.so`** from the repo root **`CMakeLists.txt`** (`nativeview_shared`) when you **`implementation project(':nativeview')`** — install an **NDK** matching **`bindings/android/build.gradle`** **`ndkVersion`** via SDK Manager. **`bindings/android/build.gradle`** wires CMake **`externalNativeBuild`** tasks to **never be skipped as UP-TO-DATE**, so each **`assembleDebug` / `assembleRelease`** run rebuilds JNI together with the app (similar to iOS **`bindings/ios/Example`** rebuilding the local **`NativeViewIOS`** package). **`preBuild`** also runs **`tools/js_build.py`** into **`assets/nativeview.js`** unless **`nativeview.skipJsBundle=true`** is set (needs **`python3`** on **`PATH`**). Optional offline/script build: **`bindings/android/scripts/build_nativeview_so.sh`** (requires **`ANDROID_NDK_HOME`**) copies into **`jniLibs/`** for non-CMake workflows.
 2. In **settings.gradle**: `include ':nativeview'` → `project(':nativeview').projectDir = file('path/to/bindings/android')` (or publish the AAR and depend on coordinates).
 3. **`implementation project(':nativeview')`** (or **`implementation '…:nativeview:…'`**).
 4. **`public class MainActivity extends NativeViewActivity`** — implement **`getContentUrl()`** (or **`getContentHtml()`**), optionally **`onNativeViewAppCreated(NativeViewApp app)`** to call **`app.allow_origin("https://your.host")`** for non-**`file://`** pages.
 5. **`AndroidManifest.xml`**: runtime permissions your JS will use (see [Ops reference](#ops-reference)); forward **`onRequestPermissionsResult`** and **`onActivityResult`** to **`NativeViewApp`**.
 
 Full sample: **`examples/android_full_bridge/`**.
+
+**Binding-local sample (`bindings/android/Example/`):** **not working as of the current tree** — the app often fails with **`app.handshake`** **timeouts** (bridge never becomes ready). It is kept for project layout parity with **`bindings/ios/Example/`** but **needs fixes** before it can be used as a smoke test. Read **`bindings/android/Example/README.md`** for the explicit status note. For a working Android sample, use **`examples/android_full_bridge/`** instead.
 
 ---
 

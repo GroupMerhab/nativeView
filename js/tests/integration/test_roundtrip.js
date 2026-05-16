@@ -41,13 +41,6 @@ load(SRC('modules/ipc_bus.js'));
 load(SRC('debug/debug.js'));
 load(SRC('public/api.js'));
 
-// Wire bridge emit path to router via ipc (same as _init.connect does)
-if (typeof window !== 'undefined' && window.__nv) {
-  window.__nv._emit = function (event, rawJson) {
-    _ipc.receive(event, rawJson);
-  };
-}
-
 // Tiny test harness
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
@@ -65,14 +58,32 @@ async function main() {
   let last = window.__nv._lastSent();
   assert(last && last.event === 'app.handshake', 'handshake sent');
   const hsSeq = last.parsed && last.parsed.s;
-  const hsReply = { e: 'app.handshake', s: hsSeq, ok: 1, d: { wireVersion: NV_WIRE_VERSION, cVersion: '1.2.3', platform: 'mac', windowId: 'main' } };
-  window.__nv._emit('app.handshake', JSON.stringify(hsReply));
+  const hsReply = { e: '', s: hsSeq, ok: 1, d: { wireVersion: NV_WIRE_VERSION, cVersion: '1.2.3', platform: 'mac', windowId: 'main' } };
+  window.__nv._emit('', JSON.stringify(hsReply));
   await sleep(0);
   assertEq(_state.ready, true, 'state.ready true');
   assertEq(_state.cVersion, '1.2.3', 'cVersion set');
   assertEq(_state.platform, 'mac', 'platform set');
   assertEq(NativeView.windows.selfId(), 'main', 'windows.selfId() is main');
   assertEq(NativeView.ipc.selfId(), 'main', 'ipc.selfId() is main');
+
+  console.log('1b) NativeView._resolve / _reject (native eval parity)');
+  const pResolve = NativeView.invoke('device.getInfo', {});
+  last = window.__nv._lastSent();
+  const seqResolve = last.parsed.s;
+  NativeView._resolve(seqResolve, { ok: true });
+  await sleep(0);
+  assertDeepEq(await pResolve, { ok: true }, '_resolve completes pending invoke');
+  const pReject = NativeView.invoke('device.getInfo', {});
+  last = window.__nv._lastSent();
+  const seqReject = last.parsed.s;
+  const rejectOutcome = pReject.then(
+    function () { throw new Error('expected rejection from _reject'); },
+    function (e) { return e; }
+  );
+  NativeView._reject(seqReject, { code: NV_ERR_NOT_FOUND, msg: 'gone' });
+  const rejErr = await rejectOutcome;
+  assert(rejErr && rejErr.code === NV_ERR_NOT_FOUND, '_reject maps to NVError');
 
   console.log('2) Request/reply round-trip');
   const p1 = NativeView.window.setTitle('Test');
@@ -99,7 +110,7 @@ async function main() {
   console.log('4) Push event delivery');
   let clickedArg = null;
   NativeView.notification.onClicked(function (data) { clickedArg = data; });
-  window.__nv._emit('notification.clicked', JSON.stringify({ e: 'notification.clicked', s: 0, d: { id: 'n1' } }));
+  window.__nv._emit('notification.clicked', JSON.stringify({ id: 'n1' }));
   await sleep(0);
   assertDeepEq(clickedArg, { id: 'n1' }, 'clicked payload delivered');
 
@@ -161,8 +172,9 @@ async function main() {
   
   // Simulate incoming push
   window.__nv._emit('ipc_bus.message', JSON.stringify({
-    e: 'ipc_bus.message',
-    d: { from: 'child-1', event: 'greeting', data: { text: 'hello' } }
+    from: 'child-1',
+    event: 'greeting',
+    data: { text: 'hello' }
   }));
   await sleep(0);
   
@@ -188,10 +200,7 @@ async function main() {
   });
   
   // Simulate push twice
-  const pushMsg = JSON.stringify({
-    e: 'ipc_bus.message',
-    d: { from: 'any', event: 'one-shot', data: {} }
-  });
+  const pushMsg = JSON.stringify({ from: 'any', event: 'one-shot', data: {} });
   
   window.__nv._emit('ipc_bus.message', pushMsg);
   await sleep(0);
@@ -214,21 +223,13 @@ async function main() {
   });
   
   // 1. Simulate beforeClose event
-  window.__nv._emit('windows.beforeClose', JSON.stringify({
-    e: 'windows.beforeClose',
-    s: 0,
-    d: { id: targetWinId }
-  }));
+  window.__nv._emit('windows.beforeClose', JSON.stringify({ id: targetWinId }));
   await sleep(0);
   assertEq(beforeCloseCalled, true, 'onBeforeClose called');
   assertEq(closedCalled, false, 'onClosed not yet called');
   
   // 2. Simulate closed event
-  window.__nv._emit('windows.closed', JSON.stringify({
-    e: 'windows.closed',
-    s: 0,
-    d: { id: targetWinId }
-  }));
+  window.__nv._emit('windows.closed', JSON.stringify({ id: targetWinId }));
   await sleep(0);
   assertEq(closedCalled, true, 'onClosed called');
   

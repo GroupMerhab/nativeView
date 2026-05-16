@@ -63,6 +63,14 @@ JNIEXPORT void JNICALL Java_com_nativeview_jni_NativeViewJNI_nativeInit(JNIEnv *
   (*env)->DeleteLocalRef(env, iface);
 }
 
+JNIEXPORT void JNICALL Java_com_nativeview_jni_NativeViewJNI_nativeBindDispatchHost(JNIEnv *env,
+                                                                                     jclass clazz,
+                                                                                     jobject host) {
+  (void)clazz;
+  if (!env) return;
+  nv_android_bind_dispatch_host(env, host);
+}
+
 JNIEXPORT void JNICALL Java_com_nativeview_jni_NativeViewJNI_nativeDestroy(JNIEnv *env,
                                                                            jclass clazz) {
   (void)clazz;

@@ -11,6 +11,33 @@ NativeView.invoke = function(event, data, ms) { return _request.send(event, data
 NativeView.on     = function(event, fn)       { _events.on(event, fn); };        // from core/events.js
 NativeView.off    = function(event, fn)       { _events.off(event, fn); };       // from core/events.js
 NativeView.once   = function(event, fn)       { _events.once(event, fn); };      // from core/events.js
+// Native hosts (iOS/Android): push into the same event path as __nv._emit with an object payload (no JSON string).
+NativeView._emit  = function(event, data) {
+  try {
+    if (typeof _ipc !== "undefined" && _ipc && typeof _ipc.receive === "function") {
+      _ipc.receive("", JSON.stringify({ e: event, d: data === undefined ? null : data }));
+    }
+  } catch (e) { /* ignore */ }
+};
+
+// WKWebView.evaluateJavaScript / Android bridge inject path: native resolves RPC by seq without re-posting wire JSON.
+NativeView._resolve = function(id, d) {
+  try {
+    if (typeof _ipc !== "undefined" && _ipc && typeof _ipc.receive === "function") {
+      _ipc.receive("", JSON.stringify({ s: id, ok: 1, d: d === undefined ? null : d }));
+    }
+  } catch (e) { /* ignore */ }
+};
+NativeView._reject = function(id, err) {
+  try {
+    var payload = (err && typeof err === "object") ? err : { code: "ERR_UNKNOWN", msg: String(err || "") };
+    if (!payload.code) payload.code = "ERR_UNKNOWN";
+    if (!("msg" in payload)) payload.msg = "";
+    if (typeof _ipc !== "undefined" && _ipc && typeof _ipc.receive === "function") {
+      _ipc.receive("", JSON.stringify({ s: id, ok: 0, d: payload }));
+    }
+  } catch (e) { /* ignore */ }
+};
 
 // Modules
 NativeView.window       = NativeView.window;        // js/src/modules/window.js
@@ -67,6 +94,14 @@ if (typeof window !== "undefined" && window.__nv && typeof NativeView !== "undef
       return;
     }
     if (typeof _ipc !== "undefined" && _ipc && typeof _ipc.receive === "function") {
+      /* C nv_send reply path: nv_ipc_build_send("", compact wire with top-level s/ok/d).
+         Wrapping as { e: event, d: data } drops s at the top level and breaks _router._resolvePromise. */
+      var seqNum = data && data.s != null ? Number(data.s) : 0;
+      var okVal = data && Object.prototype.hasOwnProperty.call(data, "ok") ? data.ok : null;
+      if (seqNum > 0 && (okVal === 0 || okVal === 1 || okVal === true || okVal === false)) {
+        _ipc.receive("", rawJson);
+        return;
+      }
       _ipc.receive("", JSON.stringify({ e: event, d: data }));
     }
   };

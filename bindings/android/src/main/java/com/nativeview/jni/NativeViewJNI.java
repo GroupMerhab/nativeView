@@ -13,8 +13,10 @@ import com.nativeview.ReadyCallback;
  * <p><b>Dispatch host:</b> If {@link #nativeInit(Context)} is called with a {@link Context} that
  * implements {@link NativeViewHost} (for example {@code MainActivity extends Activity implements
  * NativeViewHost}), that object receives {@link NativeViewHost#dispatch(int, long, String, String)}
- * for WebView operations from native code. Otherwise call the legacy {@code NativeviewBridge} JNI
- * {@code nativeSetHost} from the sample runner, or extend this module with an explicit host setter.
+ * for WebView operations from native code. {@link #nativeBindDispatchHost(NativeViewHost)} is also
+ * invoked from {@link com.nativeview.NativeViewApp} so binding succeeds even when JNI {@code
+ * FindClass} for the interface fails during {@code nativeInit}. Otherwise call the legacy {@code
+ * NativeviewBridge} JNI {@code nativeSetHost} from the sample runner.
  *
  * <p>The shared library is loaded lazily from {@link #ensureLoaded()} so embedders can surface a
  * clear error when {@code libnativeview.so} is missing (typical if {@code jniLibs} was not
@@ -75,6 +77,12 @@ public final class NativeViewJNI {
      * NativeViewHost}, registers it for C→Java WebView dispatch.
      */
     public static native void nativeInit(Context context);
+
+    /**
+     * Registers {@code host} for C→Java WebView dispatch ({@link NativeViewHost#dispatch}). Pass
+     * {@code null} to clear. Idempotent; safe to call after {@link #nativeInit(Context)}.
+     */
+    public static native void nativeBindDispatchHost(NativeViewHost host);
 
     /** Destroys all windows for the JNI singleton app, clears the dispatch host, and frees the app. */
     public static native void nativeDestroy();

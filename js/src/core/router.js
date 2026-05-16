@@ -23,7 +23,7 @@ var _router = {
     if (!entry) return;
     if (entry.timer) { try { clearTimeout(entry.timer); } catch (e) {} }
     delete _state.pending[seq];
-    if (msg.ok === 1) {
+    if (msg.ok === 1 || msg.ok === true) {
       try { entry.resolve(msg.d); } catch (e1) { if (typeof _log !== "undefined") _log.error("router", "resolve thrown", e1); }
     } else {
       var err = nv_error_from_payload(msg.d);

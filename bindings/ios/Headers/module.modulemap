@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// Clang module for Swift `import NativeView` when linking NativeView.xcframework.
+
+module NativeView {
+  header "NativeViewC.h"
+  export *
+}
