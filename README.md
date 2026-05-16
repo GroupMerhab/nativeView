@@ -20,8 +20,8 @@ A cross-platform C library for embedding native WebViews in applications.
 | macOS | WKWebView | **Supported** |
 | Windows | WebView2 | **Supported** |
 | Linux | WebKitGTK | **Supported** |
-| Android | System WebView | **In Development** |
-| iOS | WKWebView | **In Development** |
+| Android | System WebView | **Supported** |
+| iOS | WKWebView | **Supported** |
 
 ## Building
 
