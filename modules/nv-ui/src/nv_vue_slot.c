@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * nv_vue_slot.c - Vue component slot: load_component, set_props (Option B)
  *

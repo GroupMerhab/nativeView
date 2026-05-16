@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /*
  * Test nv_shm create/destroy, write, read-back.
  */

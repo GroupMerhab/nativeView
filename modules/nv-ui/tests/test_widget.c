@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /*
  * Tests for nv_component_paint, nv_ui_flush (no-op when no window),
  * and nv_ui_schedule_diff behavior.

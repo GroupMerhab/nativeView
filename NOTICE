@@ -1,5 +1,45 @@
 nativeview
-Copyright 2026 nativeview Authors
+Copyright (c) 2026 Jamharah
 
-This product includes software developed at
-nativeview (https://github.com/nativeview).
+This product includes software developed as part of the nativeview project,
+licensed under the Apache License, Version 2.0. See LICENSE.
+
+================================================================================
+
+Third-party components
+================================================================================
+
+SQLite (optional, examples)
+  Location: sqlite/
+  License: Public domain (see sqlite/LICENSE — "The Blessing")
+  Notes: Amalgamation used by some todo examples; not required for core library.
+
+Vue.js 3 (optional, nv-ui offline builds)
+  Source: Fetched via tools/fetch_vue.sh and embedded via tools/embed_vue.py
+  License: MIT License
+  Copyright (c) Evan You and Vue.js contributors
+  https://github.com/vuejs/core/blob/main/LICENSE
+
+Platform WebView runtimes (not bundled)
+  nativeview links against OS-provided embedding APIs. End-user applications
+  must comply with the respective platform terms:
+
+  - macOS / iOS: Apple WebKit (WKWebView) — Apple SDK and App Store terms
+  - Windows: Microsoft WebView2 — Microsoft Edge WebView2 license and runtime
+    redistribution requirements for packaged apps
+  - Linux: WebKitGTK — LGPL; typically satisfied by dynamic linking to system
+    libwebkit2gtk and providing source offer where required
+  - Android: System WebView / Chromium — Google Play and Android SDK terms
+
+JavaScript bridge bundle
+  Built from js/src/ by tools/js_build.py into nativeview.js (MIT/Apache 2.0
+  per file headers in the repository).
+
+================================================================================
+
+Apache License 2.0 NOTICE requirement
+================================================================================
+
+If you distribute a binary that includes nativeview, retain this NOTICE file
+(and LICENSE) in your distribution as required by the Apache License 2.0,
+Section 4(d).

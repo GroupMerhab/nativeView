@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * tests/test_integration.c - C IPC Pipeline Tests (headless)
  * 

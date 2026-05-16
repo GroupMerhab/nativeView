@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * nv_ui.h - NativeView UI Component Model (Public API)
  *

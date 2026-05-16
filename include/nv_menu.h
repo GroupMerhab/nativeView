@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * nv_menu.h — Application menu bar (macOS / Linux window menu)
  *

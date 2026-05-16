@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * test_json_compose.c - JSON Builder Composition and Serialization Tests
  *

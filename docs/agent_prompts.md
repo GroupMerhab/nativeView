@@ -1,5 +1,9 @@
 # NativeView — AI Agent Implementation Prompts
 
+> **Team-internal.** This file contains AI implementation prompts for maintainers.
+> For human contributors, start with [CONTRIBUTING.md](../CONTRIBUTING.md) and
+> [docs/index.md](index.md).
+
 ## Global Rules (apply to every prompt below)
 
 - **Language**: C11, `-Wall -Wextra` clean, zero UB, zero memory leaks

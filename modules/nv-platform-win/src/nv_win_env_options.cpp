@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* nv_win_env_options.cpp — Create WebView2 environment with --allow-file-access-from-files.
  * Enables direct file:// navigation which may render correctly where virtual host shows blank.
  */

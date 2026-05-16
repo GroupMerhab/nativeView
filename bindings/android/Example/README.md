@@ -1,5 +1,8 @@
 # NativeView Android — in-tree example
 
+> **WARNING — DO NOT USE AS YOUR STARTING POINT**  
+> This sample is **broken** (`app.handshake` timeouts). Use **[examples/android_full_bridge/](../../../examples/android_full_bridge/)** instead.
+
 ## Status: not working (known issues)
 
 **This sample is currently broken and is shipped as-is for layout reference only.** Running the app commonly ends with **`app.handshake`** **timing out**, the JS client never reaching “bridge ready”, and follow-on **`NativeView.invoke`** calls failing. The wiring (WebView ↔ JNI ↔ native IPC) still needs debugging and fixes.

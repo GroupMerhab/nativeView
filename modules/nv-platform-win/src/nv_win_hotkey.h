@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* Windows global hotkey helper — used from nv_win.c WndProc. */
 #ifdef _WIN32
 #ifndef NV_WIN_HOTKEY_H

@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 #include "nv_op_windows.h"
 #include "nv_window_manager.h"
 #include "nv_core_internal.h"

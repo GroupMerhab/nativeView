@@ -2,6 +2,8 @@
 
 Swift package and CocoaPods scaffold for embedding **nativeview** on iOS (WKWebView, JSON bridge, ops). Layout matches the intended module split (App, Window, Bridge, Ops, Helpers, Resources, Tests, Example).
 
+**Full guide:** [docs/iOS.md](../../docs/iOS.md) · **All bindings:** [docs/bindings.md](../../docs/bindings.md)
+
 ## Layout
 
 - **`Sources/NativeViewIOS/`** — App host, window/WebView, bridge routing, ops namespaces, bundled **`Resources/nativeview.js`**, Swift C helpers in **`Bridge/NVCBridge.swift`** (`import NativeView`).

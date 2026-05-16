@@ -1,5 +1,7 @@
 # nativeview
 
+[![CI](https://github.com/jamharah/nativeview/actions/workflows/ci.yml/badge.svg)](https://github.com/jamharah/nativeview/actions/workflows/ci.yml)
+
 A cross-platform C library for embedding native WebViews in applications.
 
 ## Features
@@ -23,24 +25,6 @@ A cross-platform C library for embedding native WebViews in applications.
 | Android | System WebView | **In Development** |
 | iOS | WKWebView | **In Development** |
 
-## Android library (`bindings/android/`)
-
-**What it is:** Gradle **library** (`com.nativeview`) — **JNI** + **System WebView**, **`NativeViewActivity`** host, **`assets/nativeview.js`**, and built-in Java bridge ops (`device`, `storage`, `network`, …) aligned with the same JSON wire as desktop.
-
-**What it is *not*:** The desktop **`bindings/java`** JNI binding (`io.jamharah.nativeview`), not a cross-platform replacement for every desktop C op, and not a portable substitute for **`nv.h`** (Android helpers such as **`NativeViewAndroid`** are mobile-only).
-
-**Quick start:** (1) Open the app in Android Studio with the **Android SDK** and an **NDK** installed (match **`ndkVersion`** in **`bindings/android/build.gradle`**). Gradle builds **`libnativeview.so`** from the repo root **CMake** when you build the **`:nativeview`** library. Optional: copy **`.so`** files with **`bindings/android/scripts/build_nativeview_so.sh`** (`ANDROID_NDK_HOME` required). (2) `include ':nativeview'` in Gradle with `project(':nativeview').projectDir = file('…/bindings/android')`. (3) `implementation project(':nativeview')`. (4) Subclass **`NativeViewActivity`** and implement **`getContentUrl()`**. (5) Declare runtime permissions your UI uses; forward **`onRequestPermissionsResult`** / **`onActivityResult`** to **`NativeViewApp`**.
-
-**Docs:** **[docs/Android.md](docs/Android.md)** (API + ops), **[docs/Android-migration.md](docs/Android-migration.md)** (from desktop Java). **Sample:** **[examples/android_full_bridge/](examples/android_full_bridge/)**.
-
-```java
-public final class MainActivity extends NativeViewActivity {
-    @Override protected String getContentUrl() {
-        return "file:///android_asset/index.html";
-    }
-}
-```
-
 ## Building
 
 See [docs/getting-started.md](docs/getting-started.md) for full instructions.
@@ -56,7 +40,7 @@ cmake --build .
 ### Run Tests
 
 ```bash
-ctest
+ctest --test-dir build --output-on-failure
 ```
 
 ## Example Usage
@@ -65,10 +49,8 @@ ctest
 #include <nv.h>
 
 int main(void) {
-    // 1. Create the application instance
     nv_app_t* app = nv_app_create();
 
-    // 2. Configure the main window
     nv_window_cfg_t cfg = {
         .title = "My App",
         .width = 800,
@@ -76,18 +58,12 @@ int main(void) {
         .resizable = 1
     };
 
-    // 3. Create and show the window
     nv_window_t* win = nv_window_create(app, &cfg);
     nv_window_show(win);
 
-    // 4. Load content
     nv_load_url(win, "https://example.com");
-    // Or load local HTML: nv_load_html(win, "<h1>Hello</h1>");
 
-    // 5. Run the event loop
     nv_app_run(app);
-
-    // 6. Cleanup
     nv_app_destroy(app);
     return 0;
 }
@@ -99,27 +75,69 @@ See [docs/architecture.md](docs/architecture.md) for detailed design documentati
 
 ## Module Overview
 
-- **nv_core**: Library initialization and app loop.
-- **nv_window**: Window configuration and lifecycle.
-- **nv_window_manager**: Registry for multi-window management.
-- **nv_ipc**: JSON-RPC messaging and event bus.
-- **nv_ops**: Modular operation handlers (FileSystem, Dialog, Clipboard, etc.).
-- **nv_http**: Embedded HTTP server (single-threaded, blocking). Useful for lightweight scenarios; not intended for production concurrency.
-- **nv_arena**: Fast, safe memory allocation.
-- **nv_json**: Strict JSON parsing and serialization.
+| Module | Role |
+|--------|------|
+| `nv-core` | Arena, JSON, strings, logging, utilities |
+| `nv-ipc` | JSON-RPC messaging, JS script dispatch |
+| `nv-ops` | Native capability handlers (fs, dialog, clipboard, …) |
+| `nv-runtime` | App/window lifecycle, window manager |
+| `nv-platform-*` | WKWebView, WebView2, WebKitGTK, Android, iOS |
+| `nv-ui` | Optional reactive UI (Vue-owned DOM) |
+| `nv-http` | Optional embedded HTTP server (local/dev) |
+| `nv-sdk` | Meta-package linking the full stack |
+
+Public API: [`include/nv.h`](include/nv.h). Full layout: [docs/project_structure.md](docs/project_structure.md).
+
+## Language bindings
+
+Overview: **[docs/bindings.md](docs/bindings.md)** · Index: **[bindings/README.md](bindings/README.md)**
+
+| Language | Path | Documentation |
+|----------|------|----------------|
+| Java (desktop) | `bindings/java` | [docs/Java.md](docs/Java.md) |
+| Python | `bindings/python` | [docs/Python.md](docs/Python.md) |
+| Nim | `bindings/nim` | [docs/Nim.md](docs/Nim.md) |
+| Zig | `bindings/zig` | [docs/Zig.md](docs/Zig.md) |
+| Pascal | `bindings/pascal` | [docs/Pascal.md](docs/Pascal.md) |
+| Rust | `bindings/rust` | [docs/Rust.md](docs/Rust.md) |
+| Swift (desktop) | `bindings/swift` | [docs/Swift.md](docs/Swift.md) |
+| Android | `bindings/android` | [docs/Android.md](docs/Android.md) |
+| iOS | `bindings/ios` | [docs/iOS.md](docs/iOS.md) |
+
+All docs: [docs/index.md](docs/index.md).
+
+## Android library (`bindings/android/`)
+
+**What it is:** Gradle **library** (`com.nativeview`) — **JNI** + **System WebView**, **`NativeViewActivity`** host, **`assets/nativeview.js`**, and built-in Java bridge ops (`device`, `storage`, `network`, …) aligned with the same JSON wire as desktop.
+
+**What it is *not*:** The desktop **`bindings/java`** JNI binding (`io.jamharah.nativeview`), not a cross-platform replacement for every desktop C op, and not a portable substitute for **`nv.h`** (Android helpers such as **`NativeViewAndroid`** are mobile-only).
+
+**Quick start:** (1) Android SDK + NDK (match **`ndkVersion`** in **`bindings/android/build.gradle`**). (2) `include ':nativeview'` in Gradle. (3) `implementation project(':nativeview')`. (4) Subclass **`NativeViewActivity`**, implement **`getContentUrl()`**. (5) Forward permission/activity results to **`NativeViewApp`**.
+
+**Docs:** [docs/Android.md](docs/Android.md), [docs/Android-migration.md](docs/Android-migration.md).
+
+**Sample:** Use **[examples/android_full_bridge/](examples/android_full_bridge/)** (supported). The in-tree **`bindings/android/Example/`** is currently broken — see its README.
+
+```java
+public final class MainActivity extends NativeViewActivity {
+    @Override protected String getContentUrl() {
+        return "file:///android_asset/index.html";
+    }
+}
+```
 
 ## Development
 
-- All source files: < 800 lines
-- All headers: < 300 lines
+- Source file line limits enforced at CMake configure (see [CONTRIBUTING.md](CONTRIBUTING.md))
 - Opaque handle pattern for all public types
-- Apache 2.0 license
+- Apache 2.0 license — see [LICENSE](LICENSE) and [NOTICE](NOTICE)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Contributors must agree to the [CLA](CLA.md). Please read our [Code of Conduct](CODE_OF_CONDUCT.md) and [Security Policy](SECURITY.md).
 
 ## License
 
-Apache 2.0 - See [LICENSE](LICENSE) file.
+Apache 2.0 — See [LICENSE](LICENSE).
 
-### Open Source & Commercial Use
-This project is open source under the Apache 2.0 license, allowing free use for personal and commercial applications. 
-
-A commercial license option with dedicated support and indemnification may be available in the future for enterprise needs.
+This project is open source under the Apache License 2.0, which grants all rights needed for personal and commercial use, including modification and distribution. Optional commercial support or indemnification offerings may be provided separately in the future; they do not restrict your rights under Apache 2.0.

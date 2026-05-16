@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /*
  * Integration: real fs.watch → fs.changed within 500 ms (macOS / Linux).
  */

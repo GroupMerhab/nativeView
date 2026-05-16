@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* app.setMenu — JSON menu tree → nv_menu_item_t → nv_app_set_menu */
 
 #include "nv_op_app.h"

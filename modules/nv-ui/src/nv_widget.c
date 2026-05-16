@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * nv_widget.c - Vue 3 reactive bridge, schedule_diff, flush, paint
  *

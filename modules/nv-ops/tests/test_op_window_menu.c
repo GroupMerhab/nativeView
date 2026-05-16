@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * test_op_window_menu.c — window.setContextMenu JSON + dispatch tests
  * =============================================================================

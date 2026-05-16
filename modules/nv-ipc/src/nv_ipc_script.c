@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 #include <stdlib.h>
 #include <string.h>
 #include "nv_ipc_script.h"

@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * nv_widget_flush.c - nv_ui_flush, event router, nv_form_set_window
  *

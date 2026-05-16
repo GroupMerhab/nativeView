@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 #ifndef NV_OP_TRAY_H
 #define NV_OP_TRAY_H
 

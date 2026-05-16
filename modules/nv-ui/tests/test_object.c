@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /*
  * Tests for composite component as single node (type, name, init, destroy).
  * "Object" is folded into nv_component_t; this tests one component.

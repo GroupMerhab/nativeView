@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 #include "nv_op_ipc_bus.h"
 #include "nv_window_manager.h"
 #include "util/nv_log.h"

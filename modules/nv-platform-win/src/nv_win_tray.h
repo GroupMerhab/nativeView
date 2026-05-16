@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* Private tray helpers for nv_win.c — Windows only. */
 #ifdef _WIN32
 #ifndef NV_WIN_TRAY_H

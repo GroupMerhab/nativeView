@@ -116,5 +116,5 @@ application developers. Depends on all modules above.
 ---
 
 ## Licensing
-Apache 2.0. See `LICENSE`. A CLA (`CLA.md`) is required for contributors.
+Apache 2.0. See [`LICENSE`](LICENSE). A [CLA](CLA.md) is required for contributors.
 Do NOT change the LICENSE file under any circumstances.

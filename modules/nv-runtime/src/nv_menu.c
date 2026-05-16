@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* =============================================================================
  * nv_menu.c — nv_app_set_menu (MSVC stubs / GNU weak fallbacks for app menu)
  * =============================================================================

@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /* Windows fs.watch — private helpers for nv_win.c */
 #ifdef _WIN32
 #ifndef NV_WIN_FS_WATCH_H

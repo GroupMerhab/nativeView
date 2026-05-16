@@ -1,3 +1,6 @@
+/* Copyright (c) 2026
+ * SPDX-License-Identifier: Apache-2.0 */
+
 /*
  * CLI to run the nv-http static file server on a directory and port.
  * Usage: http_server_cli <directory> [port]
