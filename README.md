@@ -1,7 +1,5 @@
 # nativeview
 
-[![CI](https://github.com/GroupMerhab/nativeView/actions/workflows/ci.yml/badge.svg)](https://github.com/GroupMerhab/nativeView/actions/workflows/ci.yml)
-
 A cross-platform C library for embedding native WebViews in applications.
 
 ## Features
