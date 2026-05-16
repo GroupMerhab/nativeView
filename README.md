@@ -1,6 +1,6 @@
 # nativeview
 
-[![CI](https://github.com/jamharah/nativeview/actions/workflows/ci.yml/badge.svg)](https://github.com/jamharah/nativeview/actions/workflows/ci.yml)
+[![CI](https://github.com/GroupMerhab/nativeView/actions/workflows/ci.yml/badge.svg)](https://github.com/GroupMerhab/nativeView/actions/workflows/ci.yml)
 
 A cross-platform C library for embedding native WebViews in applications.
 
@@ -97,6 +97,7 @@ Overview: **[docs/bindings.md](docs/bindings.md)** · Index: **[bindings/README.
 | Java (desktop) | `bindings/java` | [docs/Java.md](docs/Java.md) |
 | Python | `bindings/python` | [docs/Python.md](docs/Python.md) |
 | Nim | `bindings/nim` | [docs/Nim.md](docs/Nim.md) |
+| C# | `bindings/csharp` | [docs/CSharp.md](docs/CSharp.md) |
 | Zig | `bindings/zig` | [docs/Zig.md](docs/Zig.md) |
 | Pascal | `bindings/pascal` | [docs/Pascal.md](docs/Pascal.md) |
 | Rust | `bindings/rust` | [docs/Rust.md](docs/Rust.md) |

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>NativeView</RootNamespace>
+    <AssemblyName>NativeView</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <Description>Low-level C# P/Invoke to the nativeview public C API (nv.h, nv_hotkey.h, nv_util helpers).</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

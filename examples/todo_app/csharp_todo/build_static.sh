@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Build csharp_todo: optional Vue UI, embed HTML, static-link nativeview + dotnet publish.
+# Run from examples/todo_app/csharp_todo.
+#
+# Env:
+#   NV_TODO_SKIP_UI_BUILD=ON  — embed ../ui/fallback_index.html only (no npm)
+#   NV_CMAKE_BUILD_DIR        — CMake binary dir (default: repo build-csharp-todo-static)
+#   CMAKE_BUILD_TYPE, NV_JOBS — same spirit as nim_todo/build_static.sh
+#
+# SPDX-License-Identifier: Apache-2.0
+set -euo pipefail
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/../../.." && pwd)"
+BUILD_DIR="${NV_CMAKE_BUILD_DIR:-$REPO_ROOT/build-csharp-todo-static}"
+CMAKE_CONFIG="${CMAKE_BUILD_TYPE:-Release}"
+MIN_OS="${CMAKE_OSX_DEPLOYMENT_TARGET:-11.0}"
+GEN_DIR="$SCRIPT_DIR/generated"
+OUT_HTML_CS="$GEN_DIR/TodoHtmlEmbed.cs"
+PYTHON="${PYTHON:-python3}"
+PROPS="$SCRIPT_DIR/NativeView.Static.props"
+
+mkdir -p "$GEN_DIR"
+cd "$SCRIPT_DIR"
+
+if [[ "${NV_TODO_SKIP_UI_BUILD:-}" == "ON" ]] || [[ "${NV_TODO_SKIP_UI_BUILD:-}" == "1" ]]; then
+  HTML_IN="$SCRIPT_DIR/../ui/fallback_index.html"
+else
+  UI_ROOT="$SCRIPT_DIR/../ui"
+  (cd "$UI_ROOT" && npm install && npm run build)
+  HTML_IN="$UI_ROOT/dist/index.html"
+fi
+
+"$PYTHON" "$SCRIPT_DIR/tools/embed_html_cs.py" "$HTML_IN" "$OUT_HTML_CS" \
+  "Embedded Vue todo UI (see examples/todo_app/ui)"
+
+cmake -S "$REPO_ROOT" -B "$BUILD_DIR" \
+  -DNV_BUILD_SHARED=OFF \
+  -DNV_BUILD_TESTS=OFF \
+  -DNV_ENFORCE_FILE_LIMITS=OFF \
+  -DCMAKE_BUILD_TYPE="$CMAKE_CONFIG" \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET="$MIN_OS"
+
+write_props_header() {
+  cat >"$PROPS" <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <PropertyGroup>
+    <NV_CMAKE_BUILD>$BUILD_DIR</NV_CMAKE_BUILD>
+    <NativeViewCMakeConfig>$CMAKE_CONFIG</NativeViewCMakeConfig>
+  </PropertyGroup>
+  <ItemGroup>
+EOF
+}
+
+write_props_footer() {
+  echo '  </ItemGroup>' >>"$PROPS"
+  echo '</Project>' >>"$PROPS"
+}
+
+case "$(uname -s)" in
+Linux)
+  cmake --build "$BUILD_DIR" --target nv-core nv-ipc nv-ops nv-runtime nv-platform-linux -j"${NV_JOBS:-8}"
+  NV_RUNTIME="$BUILD_DIR/modules/nv-runtime/libnv-runtime.a"
+  NV_PLAT="$BUILD_DIR/modules/nv-platform-linux/libnv-platform-linux.a"
+  NV_OPS="$BUILD_DIR/modules/nv-ops/libnv-ops.a"
+  NV_IPC="$BUILD_DIR/modules/nv-ipc/libnv-ipc.a"
+  NV_CORE="$BUILD_DIR/modules/nv-core/libnv-core.a"
+  PKG_LIBS="$(pkg-config --libs webkit2gtk-4.1)"
+  for pkg in ayatana-appindicator3-1 ayatana-appindicator-0.1 appindicator3-0.1 libnotify x11; do
+    if pkg-config --exists "$pkg" 2>/dev/null; then
+      PKG_LIBS+=" $(pkg-config --libs "$pkg")"
+    fi
+  done
+  write_props_header
+  {
+    echo '    <LinkerArg Include="-Wl,--start-group" />'
+    for lib in "$NV_RUNTIME" "$NV_PLAT" "$NV_OPS" "$NV_IPC" "$NV_CORE"; do
+      echo "    <NativeLibrary Include=\"$lib\" />"
+    done
+    echo '    <LinkerArg Include="-Wl,--end-group" />'
+    for tok in $PKG_LIBS; do
+      echo "    <LinkerArg Include=\"$tok\" />"
+    done
+  } >>"$PROPS"
+  write_props_footer
+  RID=linux-x64
+  ;;
+Darwin)
+  cmake --build "$BUILD_DIR" --target nv-core nv-ipc nv-ops nv-runtime nv-platform-mac -j"${NV_JOBS:-8}"
+  write_props_header
+  for lib in \
+    "$BUILD_DIR/modules/nv-platform-mac/libnv-platform-mac.a" \
+    "$BUILD_DIR/modules/nv-runtime/libnv-runtime.a" \
+    "$BUILD_DIR/modules/nv-ops/libnv-ops.a" \
+    "$BUILD_DIR/modules/nv-ipc/libnv-ipc.a" \
+    "$BUILD_DIR/modules/nv-core/libnv-core.a"; do
+    echo "    <NativeLibrary Include=\"$lib\" />" >>"$PROPS"
+  done
+  for fw in Carbon Cocoa CoreServices WebKit UserNotifications; do
+    echo "    <LinkerArg Include=\"-framework\" />" >>"$PROPS"
+    echo "    <LinkerArg Include=\"$fw\" />" >>"$PROPS"
+  done
+  echo '    <LinkerArg Include="-lobjc" />' >>"$PROPS"
+  write_props_footer
+  RID=osx-$(uname -m)
+  ;;
+*)
+  echo "Unsupported host: $(uname -s). Use build_static.ps1 on Windows." >&2
+  exit 1
+  ;;
+esac
+
+dotnet publish TodoApp.csproj -c Release -r "$RID" --self-contained false
+
+PUBLISH_DIR="$SCRIPT_DIR/bin/Release/net8.0/$RID/publish"
+OUT_BIN="$PUBLISH_DIR/csharp_todo"
+if [[ -d "$PUBLISH_DIR" ]]; then
+  # Framework-dependent publish: apphost needs csharp_todo.dll and dependency libs beside it.
+  cp -af "$PUBLISH_DIR"/. "$SCRIPT_DIR/"
+  echo "Built: $SCRIPT_DIR/csharp_todo (and publish dependencies in this folder)"
+elif [[ -x "$OUT_BIN" ]]; then
+  echo "Built under: $PUBLISH_DIR (publish folder missing; run dotnet publish again)"
+else
+  echo "Built under: $PUBLISH_DIR"
+fi

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>NativeView.Minimal</RootNamespace>
+    <AssemblyName>minimal</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\bindings\csharp\NativeView.csproj" />
+  </ItemGroup>
+  <Import Project="..\NativeView.Static.props" Condition="Exists('..\NativeView.Static.props')" />
+</Project>

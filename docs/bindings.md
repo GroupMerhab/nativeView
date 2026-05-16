@@ -16,6 +16,7 @@ These wrap **`nv_app_*`**, **`nv_window_*`**, **`nv_load_*`**, **`nv_send`**, ho
 | **Java** | `bindings/java` | JNI + `libnativeview` shared | [Java.md](Java.md) |
 | **Python** | `bindings/python` | ctypes + shared lib | [Python.md](Python.md) |
 | **Nim** | `bindings/nim` | Static archives (default) or `-d:nativeviewShared` | [Nim.md](Nim.md) |
+| **C#** | `bindings/csharp` | Static archives (default) or `NATIVEVIEW_SHARED` | [CSharp.md](CSharp.md) |
 | **Zig** | `bindings/zig` | Static archive chain via `zig build` | [Zig.md](Zig.md) |
 | **Pascal** | `bindings/pascal` | FPC `external` + static/DLL | [Pascal.md](Pascal.md) |
 | **Rust** | `bindings/rust` | `link-shared` / `link-static` / `link-none` features | [Rust.md](Rust.md) |
@@ -25,7 +26,7 @@ These wrap **`nv_app_*`**, **`nv_window_*`**, **`nv_load_*`**, **`nv_send`**, ho
 
 - **Python** — fastest scripting experiments; requires shared `libnativeview`.
 - **Java** — JVM apps on desktop; needs `-DNV_BUILD_JAVA_JNI=ON`; macOS requires `-XstartOnFirstThread`.
-- **Nim / Zig / Pascal / Rust** — native binaries with static linking patterns documented per language.
+- **Nim / C# / Zig / Pascal / Rust** — native binaries with static linking patterns documented per language.
 - **Swift (desktop)** — SwiftPM package for macOS/Linux C interop; separate from iOS UIKit package.
 
 ---
@@ -93,6 +94,8 @@ Ensures JSON wire envelopes stay aligned across Android and desktop Java. Not an
 | Java | `examples/todo_app/java_todo/` |
 | Python | `examples/python/`, `examples/todo_app/py_todo/` |
 | Nim | `examples/nim/`, `examples/todo_app/nim_todo/` |
+| C# | `examples/csharp/` (minimal; experimental) |
+| C# todo | `examples/todo_app/csharp_todo/` (**not working yet** — see [CSharp.md](CSharp.md#known-limitations)) |
 | Zig | `examples/zig/`, `examples/todo_app/zig_todo/` |
 | Pascal | `examples/pascal/` |
 | Rust | `examples/todo_app/rust_todo/` |

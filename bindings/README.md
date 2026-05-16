@@ -13,6 +13,7 @@ This directory contains **language-specific wrappers** and **mobile embedding li
 | [`java/`](java/) | Desktop (JVM) | JNI | [docs/Java.md](../docs/Java.md) |
 | [`python/`](python/) | Desktop | ctypes | [docs/Python.md](../docs/Python.md) |
 | [`nim/`](nim/) | Desktop | `importc` FFI | [docs/Nim.md](../docs/Nim.md) |
+| [`csharp/`](csharp/) | Desktop | P/Invoke | [docs/CSharp.md](../docs/CSharp.md) |
 | [`zig/`](zig/) | Desktop | Zig module | [docs/Zig.md](../docs/Zig.md) |
 | [`pascal/`](pascal/) | Desktop | FPC unit | [docs/Pascal.md](../docs/Pascal.md) |
 | [`rust/`](rust/) | Desktop | `extern "C"` crate | [docs/Rust.md](../docs/Rust.md) |
@@ -35,7 +36,7 @@ This directory contains **language-specific wrappers** and **mobile embedding li
 
 ```text
 Desktop (nv.h + WebView on macOS / Windows / Linux)
-  java, python, nim, zig, pascal, rust, swift
+  java, python, nim, csharp, zig, pascal, rust, swift
 
 Mobile (platform WebView + JSON bridge)
   android  → com.nativeview (Java/Kotlin)
@@ -57,6 +58,7 @@ Do not confuse `bindings/java` (desktop JNI) with `bindings/android` (mobile lib
 | Java | [examples/todo_app/java_todo/](../examples/todo_app/java_todo/) |
 | Python | [examples/python/](../examples/python/), [examples/todo_app/py_todo/](../examples/todo_app/py_todo/) |
 | Nim | [examples/nim/](../examples/nim/), [examples/todo_app/nim_todo/](../examples/todo_app/nim_todo/) |
+| C# | [examples/csharp/](../examples/csharp/) |
 | Zig | [examples/zig/](../examples/zig/), [examples/todo_app/zig_todo/](../examples/todo_app/zig_todo/) |
 | Pascal | [examples/pascal/](../examples/pascal/) |
 | Rust | [examples/todo_app/rust_todo/](../examples/todo_app/rust_todo/) |

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Jamharah.Todo</RootNamespace>
+    <AssemblyName>csharp_todo</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\bindings\csharp\NativeView.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
+  </ItemGroup>
+  <Import Project="NativeView.Static.props" Condition="Exists('NativeView.Static.props')" />
+</Project>

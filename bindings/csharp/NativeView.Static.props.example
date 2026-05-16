@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copy to NativeView.Static.props next to your app .csproj (or import from a known path).
+  Set NV_CMAKE_BUILD to your CMake binary directory (same tree as cmake --build).
+
+  Build the app without NATIVEVIEW_SHARED (static archives linked via NativeLibrary / LinkerArg).
+-->
+<Project>
+  <PropertyGroup>
+    <NV_CMAKE_BUILD Condition="'$(NV_CMAKE_BUILD)' == ''">REPLACE_WITH_CMAKE_BUILD_DIR</NV_CMAKE_BUILD>
+    <NativeViewCMakeConfig Condition="'$(NativeViewCMakeConfig)' == ''">Release</NativeViewCMakeConfig>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)\modules\nv-runtime\$(NativeViewCMakeConfig)\nv-runtime.lib" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)\modules\nv-platform-win\$(NativeViewCMakeConfig)\nv-platform-win.lib" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)\modules\nv-ops\$(NativeViewCMakeConfig)\nv-ops.lib" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)\modules\nv-ipc\$(NativeViewCMakeConfig)\nv-ipc.lib" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)\modules\nv-core\$(NativeViewCMakeConfig)\nv-core.lib" />
+    <!-- MSVC: export nv_* for P/Invoke — full path to bindings/csharp/nativeview_host.def (see build_static.ps1) -->
+    <!-- <LinkerArg Include="/DEF:REPLACE_WITH_REPO\bindings\csharp\nativeview_host.def" /> -->
+    <!-- WebView2LoaderStatic.lib: set WebView2LibDir or add LinkerArg with full path (see examples/csharp/build_static.ps1). -->
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-platform-mac/libnv-platform-mac.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-runtime/libnv-runtime.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-ops/libnv-ops.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-ipc/libnv-ipc.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-core/libnv-core.a" />
+    <LinkerArg Include="-framework" />
+    <LinkerArg Include="Carbon" />
+    <LinkerArg Include="-framework" />
+    <LinkerArg Include="Cocoa" />
+    <LinkerArg Include="-framework" />
+    <LinkerArg Include="CoreServices" />
+    <LinkerArg Include="-framework" />
+    <LinkerArg Include="WebKit" />
+    <LinkerArg Include="-framework" />
+    <LinkerArg Include="UserNotifications" />
+    <LinkerArg Include="-lobjc" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-runtime/libnv-runtime.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-platform-linux/libnv-platform-linux.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-ops/libnv-ops.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-ipc/libnv-ipc.a" />
+    <NativeLibrary Include="$(NV_CMAKE_BUILD)/modules/nv-core/libnv-core.a" />
+    <!-- Append pkg-config --libs webkit2gtk-4.1 (+ optional deps) via LinkerArg in your build script. -->
+  </ItemGroup>
+</Project>

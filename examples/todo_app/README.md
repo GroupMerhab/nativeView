@@ -9,7 +9,24 @@ Layout:
 - **`py_todo/`** — Python port (`todo_app.py` + SQLite + bridge); see [py_todo/README.md](py_todo/README.md). Run **`python3 todo_app.py`** after `py_todo/build_shared.sh` (shared `libnativeview` + embedded HTML).
 - **`java_todo/`** — Java port (`TodoApp` + SQLite + bridge); see [java_todo/README.md](java_todo/README.md). Run **`java … io.jamharah.todo.TodoApp`** after `java_todo/build_shared.sh` (shared `libnativeview` + JNI + packaged UI).
 - **`zig_todo/`** — Zig port (`todo_app.zig` + SQLite + bridge); see [zig_todo/README.md](zig_todo/README.md). Executable **`zig_todo`** via `zig_todo/build_static.sh`.
+- **`csharp_todo/`** — C# port (`Program.cs` + SQLite + bridge); see [csharp_todo/README.md](csharp_todo/README.md). **Not working end-to-end yet** (see [docs/CSharp.md](../../docs/CSharp.md#known-limitations)). Build scripts exist for development only.
 - **`android_todo/`** — Android app (Java + SQLite + `bindings/android`); see [android_todo/README.md](android_todo/README.md). APK via `android_todo/prep_assets.sh` and `./gradlew :app:assembleDebug`.
+
+## Build (C#)
+
+> **Note:** The C# todo example is **work in progress** and may not run after a successful build. Prefer `nim_todo`, `c_todo`, or `zig_todo` for a verified todo demo.
+
+From `csharp_todo/`:
+
+```bash
+./build_static.sh
+```
+
+Windows: `build_static.bat` or `.\build_static.ps1`
+
+Skip npm (fallback HTML only): `NV_TODO_SKIP_UI_BUILD=ON ./build_static.sh`
+
+Unit tests: `./run_tests.sh` (or `.\run_tests.ps1`)
 
 ## Build (Zig)
 

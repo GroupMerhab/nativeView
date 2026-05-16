@@ -1,0 +1,46 @@
+; Export nativeview public API symbols from a statically linked .NET host (.exe).
+; Required on Windows so NativeLibrary.GetMainProgramHandle + GetProcAddress can resolve P/Invoke.
+; Linked via /DEF: in NativeView.Static.props / build_static.ps1 (MSVC only).
+;
+; SPDX-License-Identifier: Apache-2.0
+
+EXPORTS
+    nv_app_create
+    nv_app_run
+    nv_app_quit
+    nv_app_destroy
+    nv_window_create
+    nv_window_close
+    nv_window_destroy
+    nv_window_show
+    nv_window_hide
+    nv_window_set_title
+    nv_window_set_size
+    nv_window_set_min_size
+    nv_window_center
+    nv_window_fullscreen
+    nv_window_is_fullscreen
+    nv_window_minimize
+    nv_window_maximize
+    nv_window_restore
+    nv_window_focus
+    nv_window_is_focused
+    nv_window_set_resizable
+    nv_window_set_always_on_top
+    nv_window_set_opacity
+    nv_window_set_zoom_factor
+    nv_window_request_close
+    nv_window_on_close
+    nv_load_url
+    nv_load_html
+    nv_load_html_ref
+    nv_eval_js
+    nv_eval_js_batch
+    nv_on_message
+    nv_on_ready
+    nv_send
+    nv_window_register_hotkey
+    nv_window_unregister_hotkey
+    nv_version_string
+    nv_get_version_info
+    nv_bench_now

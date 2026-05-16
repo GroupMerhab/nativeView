@@ -1,3 +1,6 @@
+# Build and test nativeview on Linux, macOS, and Windows.
+# Desktop stack only (no Android/iOS matrix). UI modules off — no Vue fetch in CI.
+
 name: CI
 
 on:
@@ -5,47 +8,75 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_TYPE: Release
+  # Core library + tests; skip nv-ui (needs Vue bundle) and file-length gate in CI.
+  NV_CMAKE_FLAGS: >-
+    -DCMAKE_BUILD_TYPE=Release
+    -DNV_BUILD_UI=OFF
+    -DNV_ENFORCE_FILE_LIMITS=OFF
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            name: macOS
-          - os: ubuntu-latest
-            name: Linux
-
-    runs-on: ${{ matrix.os }}
-    name: ${{ matrix.name }}
-
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             cmake \
+            ninja-build \
             build-essential \
             pkg-config \
             libwebkit2gtk-4.1-dev
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -S . -B build -G Ninja ${{ env.NV_CMAKE_FLAGS }}
 
       - name: Build
-        run: cmake --build build -j
+        run: cmake --build build -j "$(nproc)"
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
-  # Windows CI requires WebView2 on the runner; enable when a stable workflow is defined.
-  # windows:
-  #   runs-on: windows-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - run: cmake -S . -B build
-  #     - run: cmake --build build --config Release
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja ${{ env.NV_CMAKE_FLAGS }}
+
+      - name: Build
+        run: cmake --build build -j "$(sysctl -n hw.ncpu)"
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build ${{ env.NV_CMAKE_FLAGS }}
+
+      - name: Build
+        run: cmake --build build --config Release -j
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
