@@ -43,7 +43,7 @@ Part of the industrial-grade HTTP server implementation for nativeView.
 
 ## Coding rules
 - C11, `-Wall -Wextra` clean
-- Max 400 lines per `.c` file
+- Max 800 lines per `.c` file
 - Every public function must have a unit test
 
 ## Task labels

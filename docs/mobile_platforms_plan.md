@@ -10,7 +10,7 @@ Goal: Add iOS and Android backends with maximum modularity, readability, maintai
 - [ ] Build must be C11 and `-Wall -Wextra` clean (no new warnings).
 - [ ] File size limits:
   - [ ] No `.c/.m/.mm/.cpp` file exceeds 800 lines.
-  - [ ] Additionally, keep new `.c` files ≤ 400 lines (repo rule); split aggressively.
+  - [ ] Additionally, keep new `.c` files ≤ 800 lines (repo rule); split aggressively.
 
 ## Decisions Required (Do Not Implement Until Chosen)
 - [x] iOS language + memory model:

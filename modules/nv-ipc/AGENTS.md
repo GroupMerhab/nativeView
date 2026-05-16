@@ -29,7 +29,7 @@ This is a shared dependency: both `nv-runtime` (window lifecycle) and `nv-ui`
 ## Coding rules
 - C11, `-Wall -Wextra` clean
 - Binary frame protocol changes must update `docs/wire_protocol.md`
-- Max 400 lines per `.c` file
+- Max 800 lines per `.c` file
 - All new message types need a test in `tests/test_ipc.c`
 
 ## Task labels

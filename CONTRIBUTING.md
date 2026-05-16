@@ -48,7 +48,7 @@ Summary:
 - No bare `malloc`/`free` in new code — use arena allocators
 - No platform `#ifdef` outside `modules/nv-platform-*/`
 - All public functions NULL-safe
-- Max 400 lines per `.c` file (800 for `.m`/`.mm`/`.cpp`) unless allowlisted
+- Max 800 lines per `.c` file (800 for `.m`/`.mm`/`.cpp`) unless allowlisted
 
 ### SPDX license header
 
@@ -73,7 +73,7 @@ If a file exceeds the limit, configuration fails with an error that mentions
 
 Current limits:
 
-- `.c`: 400 lines
+- `.c`: 800 lines
 - `.m`, `.mm`, `.cpp`: 800 lines
 
 Some legacy/exception files are allowlisted in the script; new additions to the

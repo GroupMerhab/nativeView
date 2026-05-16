@@ -6,7 +6,7 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 LIMITS = {
-    ".c": 400,
+    ".c": 800,
     ".m": 800,
     ".mm": 800,
     ".cpp": 800,

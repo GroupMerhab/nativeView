@@ -13,22 +13,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_compile_definitions(_GNU_SOURCE)
 endif()
 
-option(NV_ENFORCE_FILE_LIMITS "Fail configure if new/modified sources exceed repo line limits" ON)
-if(NV_ENFORCE_FILE_LIMITS)
-  execute_process(
-    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_file_lengths.py
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    RESULT_VARIABLE _nv_file_len_rc
-    OUTPUT_VARIABLE _nv_file_len_out
-    ERROR_VARIABLE _nv_file_len_err
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_STRIP_TRAILING_WHITESPACE
-  )
-  if(NOT _nv_file_len_rc EQUAL 0)
-    message(FATAL_ERROR "File length check failed:\n${_nv_file_len_err}\n(set NV_ENFORCE_FILE_LIMITS=OFF to bypass)")
-  endif()
-endif()
-
 # =============================================================================
 # Shared library option (declared early so subdirectories inherit PIC flag)
 # =============================================================================

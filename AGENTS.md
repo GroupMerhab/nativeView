@@ -13,7 +13,7 @@ Read this file before reading any module-level `AGENTS.md`.
 4. All public functions must be NULL-safe.
 5. C11, `-Wall -Wextra` clean — no new warnings.
 6. Every new public function needs a unit test.
-7. Max 400 lines per `.c` file — split if exceeded.
+7. Max 800 lines per `.c` file — split if exceeded.
 
 ---
 
